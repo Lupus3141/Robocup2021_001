@@ -9,7 +9,7 @@
 # T Platte schaffen
 # Silber erkennen
 # Rescue Kit aufnehmen können
-# Rescue Kit erkennen können
+# Rescue Kit erkennen können (richtige Farbwerte herausfinden!!!)
 # Rescue Kit am Anfag des Rescuebereichs ablegen
 # Lebendes und totes Opfer unterscheiden
 # Kugeln einzeln suchen und zur Ecke bringen
@@ -28,6 +28,7 @@ RESOLUTION = (320, 192)
 CUT = (50, 270, 120, 170) #eigentlich (50, 270, 120, 192)
 CUT_GRN = (50, 270, 150, 192) #eigentlich (50, 270, 120, 192)
 CUT_SILVER = (0, 320, 0, 100)
+CUT_RESCUEKIT = (50, 270, 120, 170)
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #USB "Adresse" und Baudrate des Arduinos
 
 while(not ser.is_open):
@@ -52,7 +53,7 @@ grn_list = []
 grn_counter = 0
 rescueCounter = 0
 rescue = False
-mindist = 300 #mindist Durchmesser fuer Kugel?
+mindist = 300 
 x = 0
 y = 0
 r = 0
@@ -66,7 +67,8 @@ def DEBUG():
 	cv2.imshow("cut_green", green)	
 	cv2.setMouseCallback("mouseRGB", mouseRGB)
 	cv2.imshow("mouseRGB", image)
-	cv2.imshow("cut_silber", cut_silver) #gibt Ausschnitt aus
+	cv2.imshow("cut_silber", cut_silver)
+	cv2.imshow("cut_rescuekit", cut_rescuekit)
 
 def DEBUG_LastLinePos():
 	print("LinePosLastLoop[0] = ", LinePosLastLoop[0])
@@ -95,19 +97,24 @@ print(image.shape)
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
 	image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
 	image_rgb = image
+
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 	cv2.GaussianBlur(image, ((9, 9)), 2, 2)
+
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
 	cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
 	cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
-	
+	cut_rescuekit = image[CUT_RESCUEKIT[0]:CUT_RESCUEKIT[1]][CUT_RESCUEKIT[2]:CUT_RESCUEKIT[3]]
+
 	line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
 	green = cv2.inRange(cut_grn, (55, 40, 40), (80, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
-	Silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75)) #kalibrierung schwarz
-	
+	silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
+	rescuekit = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75)) #richtige Werte eintragen
+
 	contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-	contours_silver, hierarchy_silver = cv2.findContours(Silber.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)	#find contours around the outside of any shapes
+	contours_silver, hierarchy_silver = cv2.findContours(silber.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+	contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 	
 	linePos = 0
 	index = 0
@@ -318,10 +325,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		break
 
 
-
-
-
-'''
 circlesCounter = 0
 ResolutionRescue = (320, 192)
 camera = PiCamera()
@@ -378,4 +381,3 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
 		break #beendet Program bzw. bricht aus Endlosschleife aus
 print("Program beendet")
-'''
