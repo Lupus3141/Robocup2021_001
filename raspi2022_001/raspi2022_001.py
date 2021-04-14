@@ -7,7 +7,7 @@
 # Grüne Punkte besser erkennen
 # Dose umfahren und sich dabei nicht von anderen Linien irritieren lassen (neues ROI, ganz links am Kamerabild bzw. einfach alles rechts abschneiden)
 # T Platte schaffen
-# Silber erkennen
+# Silber erkennen verbessern
 # Rescue Kit aufnehmen können
 # Rescue Kit erkennen können (richtige Farbwerte herausfinden!!!)
 # Rescue Kit am Anfag des Rescuebereichs ablegen
@@ -26,8 +26,8 @@ import serial
 
 RESOLUTION = (320, 192)
 CUT = (50, 270, 120, 170) #eigentlich (50, 270, 120, 192)
-CUT_GRN = (50, 270, 150, 192) #eigentlich (50, 270, 120, 192)
-CUT_SILVER = (0, 320, 0, 100)
+CUT_GRN = (50, 270, 120, 192) #eigentlich (50, 270, 120, 192)
+CUT_SILVER = (0, 100, 0, 192)  
 CUT_RESCUEKIT = (50, 270, 120, 170)
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #USB "Adresse" und Baudrate des Arduinos
 
@@ -93,7 +93,7 @@ def mouseRGB(event, x, y, flags, param):
         print("Coordinates of pixel: X: ", x,"Y: ", y)
 
 ##############################################################################################
-print(image.shape)
+
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
 	image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
 	image_rgb = image
@@ -105,6 +105,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
 	cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 	cut_rescuekit = image[CUT_RESCUEKIT[0]:CUT_RESCUEKIT[1]][CUT_RESCUEKIT[2]:CUT_RESCUEKIT[3]]
+
+	cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen	
 
 	line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
 	green = cv2.inRange(cut_grn, (55, 40, 40), (80, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)

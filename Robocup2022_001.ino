@@ -2,8 +2,6 @@
   - hängt sich bei while Schleife auf (Fehlercode: jdhjkdfhg)
 */
 
-bool ungerade = true;
-
 #include <Servo.h>
 #include <Wire.h>
 #include <VL53L0X.h>
@@ -491,6 +489,7 @@ void dose() {
 }
 
 void ausrichten() {
+  bool ungerade = true;
   int last = distanceAvg();
   fahre(150, -150, 200);
   fahre(0, 0, 0);
