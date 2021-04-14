@@ -23,18 +23,25 @@ import argparse
 import time
 import cv2
 import serial
-
+"""
 RESOLUTION = (320, 192)
 CUT = (50, 270, 120, 170) #eigentlich (50, 270, 120, 192)
 CUT_GRN = (50, 270, 120, 192) #eigentlich (50, 270, 120, 192)
 CUT_SILVER = (0, 100, 0, 192)  
 CUT_RESCUEKIT = (50, 270, 120, 170)
+"""
+RESOLUTION = [320, 192]
+CUT = [120, 170, 50, 270] #eigentlich (50, 270, 120, 192)
+CUT_GRN = [120, 192, 80, 240] #eigentlich (50, 270, 120, 192)
+CUT_SILVER = [0, 70, 50, 270]  
+CUT_RESCUEKIT = [50, 270, 120, 170]
+
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #USB "Adresse" und Baudrate des Arduinos
 
 while(not ser.is_open):
 	print("Waiting for Serial...")
 	time.sleep(0.1)
-print("Opened:", ser.name) 
+print("Opened:", ser.name, "aka Teensy 3.6") 
 
 camera = PiCamera()
 camera.resolution = RESOLUTION #Aufloesung, je niedriger desto schneller das Program
@@ -63,12 +70,11 @@ def DEBUG():
 	cv2.imshow("image_rgb", image_rgb) #gibt das aktuelle Bild aus
 	cv2.imshow("image_hsv", image)
 	cv2.imshow("cut", cut)
-	cv2.imshow("cut_green", cut_grn)
-	cv2.imshow("cut_green", green)	
-	cv2.setMouseCallback("mouseRGB", mouseRGB)
-	cv2.imshow("mouseRGB", image)
-	cv2.imshow("cut_silber", cut_silver)
-	cv2.imshow("cut_rescuekit", cut_rescuekit)
+	#cv2.imshow("cut_green", cut_grn)
+	#cv2.setMouseCallback("mouseRGB", mouseRGB)
+	#cv2.imshow("mouseRGB", image)
+	#cv2.imshow("cut_silber", cut_silver)
+	#cv2.imshow("cut_rescuekit", cut_rescuekit)
 
 def DEBUG_LastLinePos():
 	print("LinePosLastLoop[0] = ", LinePosLastLoop[0])
@@ -101,11 +107,16 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 	cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 
+	cut = image[120:170, 50:270] # Teil des frames fuer die Linienerkennung ausschneiden
+	cut_grn = image[120:192, 80:240] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
+	cut_silver = image[0:70, 50:270]
+	cut_rescuekit = image[50:270, 120:170]
+	"""
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
 	cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
 	cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 	cut_rescuekit = image[CUT_RESCUEKIT[0]:CUT_RESCUEKIT[1]][CUT_RESCUEKIT[2]:CUT_RESCUEKIT[3]]
-
+	"""
 	cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen	
 
 	line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
@@ -335,15 +346,16 @@ camera.rotation = 0
 camera.framerate = 32
 rawCapture = PiRGBArray(camera, size=ResolutionRescue)
 rawCaptureCircles = PiRGBArray(camera, size=ResolutionRescue)
-time.sleep(0.5) #wartet kurz, damit Arduino und Kamera bereit sind
-print("Program started")
+time.sleep(0.5) #wartet kurz, damit Teensy und Kamera bereit sind
+print("Rescue program started")
 framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 	image = frame.array
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 	# detect circles in the image
-	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2.5, 300)
+	#circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2.5, 300)
+	circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
 	# ensure at least some circles were found
 	if circles is not None:
 		circlesCounter = circlesCounter + 1
