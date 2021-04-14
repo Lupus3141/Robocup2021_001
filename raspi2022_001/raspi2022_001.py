@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-#test test test 
+
 # To do:
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
 # Grüne Punkte besser erkennen
