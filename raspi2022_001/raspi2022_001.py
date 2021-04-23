@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-
 # To do:
+# numpy array statt normalen
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
 # Grüne Punkte besser erkennen
 # Dose umfahren und sich dabei nicht von anderen Linien irritieren lassen (neues ROI, ganz links am Kamerabild bzw. einfach alles rechts abschneiden)
@@ -23,18 +23,13 @@ import argparse
 import time
 import cv2
 import serial
-"""
-RESOLUTION = (320, 192)
-CUT = (50, 270, 120, 170) #eigentlich (50, 270, 120, 192)
-CUT_GRN = (50, 270, 120, 192) #eigentlich (50, 270, 120, 192)
-CUT_SILVER = (0, 100, 0, 192)  
-CUT_RESCUEKIT = (50, 270, 120, 170)
-"""
-RESOLUTION = [320, 192]
-CUT = [120, 170, 50, 270] #eigentlich (50, 270, 120, 192)
-CUT_GRN = [120, 192, 80, 240] #eigentlich (50, 270, 120, 192)
-CUT_SILVER = [0, 70, 50, 270]  
-CUT_RESCUEKIT = [50, 270, 120, 170]
+
+RESOLUTION = np.array((320, 192))
+CUT = np.array((50, 270, 120, 170)) #eigentlich (50, 270, 120, 192)
+CUT_GRN = np.array((50, 270, 120, 192)) #eigentlich (50, 270, 120, 192)
+CUT_SILVER = np.array((0, 100, 0, 192)) 
+CUT_RESCUEKIT = np.array((50, 270, 120, 170))
+
 
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #USB "Adresse" und Baudrate des Arduinos
 
@@ -70,11 +65,12 @@ def DEBUG():
 	cv2.imshow("image_rgb", image_rgb) #gibt das aktuelle Bild aus
 	cv2.imshow("image_hsv", image)
 	cv2.imshow("cut", cut)
-	#cv2.imshow("cut_green", cut_grn)
+	cv2.imshow("cut_green", cut_grn)
+	cv2.imshow("cut_silber", cut_silver)
+	cv2.imshow("cut_rescuekit", cut_rescuekit)
+	cv2.imshow("Konturen gruen", green)
 	#cv2.setMouseCallback("mouseRGB", mouseRGB)
 	#cv2.imshow("mouseRGB", image)
-	#cv2.imshow("cut_silber", cut_silver)
-	#cv2.imshow("cut_rescuekit", cut_rescuekit)
 
 def DEBUG_LastLinePos():
 	print("LinePosLastLoop[0] = ", LinePosLastLoop[0])
@@ -106,23 +102,16 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 	cv2.GaussianBlur(image, ((9, 9)), 2, 2)
-
-	cut = image[120:170, 50:270] # Teil des frames fuer die Linienerkennung ausschneiden
-	cut_grn = image[120:192, 80:240] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
-	cut_silver = image[0:70, 50:270]
-	cut_rescuekit = image[50:270, 120:170]
-	"""
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
 	cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
 	cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 	cut_rescuekit = image[CUT_RESCUEKIT[0]:CUT_RESCUEKIT[1]][CUT_RESCUEKIT[2]:CUT_RESCUEKIT[3]]
-	"""
 	cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen	
 
 	line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
 	green = cv2.inRange(cut_grn, (55, 40, 40), (80, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
 	silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-	rescuekit = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75)) #richtige Werte eintragen
+	rescuekit = cv2.inRange(cut_rescuekit, (0, 0, 0), (255, 255, 75)) #richtige Werte eintragen
 
 	contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -135,7 +124,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	### Silbererkennung:
 	if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
 	   x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) # erstellt Rechteck um die Konturen 
-	   cv2.rectangle(image, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (255, 0, 0), 3) #malt dieses Rechteck auch ins Bild
+	   cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) #malt dieses Rechteck auch ins Bild
 	   #print("kein silber erkannt")
 	   if rescueCounter > 2:
 	   	rescueCounter = rescueCounter - 3
@@ -159,7 +148,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			b = cv2.boundingRect(contours_blk[i])
 			x, y, w, h = b
 			a = int(abs(x + w / 2 - 160 - lastLinePos))
-			cv2.rectangle(image, (x, y + 80), (x + w, y + 80 + h), (0, 100, 0), 3)
+			#cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (255, 100, 255), 3)
 			if(a < nearest):
 				nearest = a
 				index = i
@@ -171,10 +160,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			#print("Skipped")
 			#time.sleep(0.15)
 		linePos = int(x + w / 2 - 160)
-		cv2.rectangle(image, (x, y + 80), (x + w, y + 80 + h), (0, 0, 255), 3)
-		cv2.putText(image, str(linePos),(linePos + 160, 50), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 1, (255, 0, 0), 2)
-		cv2.line(image, (linePos + 160, 80), (linePos + 160, 160), (255, 0, 0),2)
-		cv2.line(image, (0, 110), (319, 110), (255, 0, 0), 2)
+		cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 0, 255), 2)
+		cv2.putText(image_rgb, str(linePos),(int(RESOLUTION[0] / 2), int(RESOLUTION[1] / 2)), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255, 0, 0), 3)
+		#cv2.line(image_rgb, (linePos + 160, 80), (linePos + 160, 160), (255, 0, 0),2)
+		#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 		lastLinePos = linePos
 	contours_right = False
 	contours_left = False	
@@ -234,7 +223,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			for i in range(len(contours_grn)):
 				b = cv2.boundingRect(contours_grn[i])
 				x, y, w, h = b
-				cv2.rectangle(image, (x, y + 50), (x + w, y + 50 + h), (0, 255, 0), 3)
+				#cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 255, 0), 3)
 				a = x + w/2 - 160
 				if(a < linePos):
 					contours_left = True
@@ -249,7 +238,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		for i in range(len(contours_grn)):
 			b = cv2.boundingRect(contours_grn[i])
 			x, y, w, h = b
-			cv2.rectangle(image, (x, y + 50), (x + w, y + 50 + h), (0, 0, 255), 3)
+			cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 0, 100), 3)
 			a = x + w/2 - 160
 			if(a < linePos):
 				contours_left = True
@@ -261,7 +250,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		for i in range(len(contours_grn)):
 			b = cv2.boundingRect(contours_grn[i])
 			x, y, w, h = b
-			cv2.rectangle(image, (x, y + 50), (x + w, y + 50 + h), (0, 255, 0), 3)
+			cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 255, 0), 3)
 			a = x + w/2 - 160
 			if(a < linePos):
 				contours_left = True
@@ -275,7 +264,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		for i in range(len(contours_grn)):
 			b = cv2.boundingRect(contours_grn[i])
 			x, y, w, h = b
-			cv2.rectangle(image, (x, y + 50), (x + w, y + 50 + h), (0, 255, 0), 3)
+			cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 255, 0), 3)
 			a = x + w/2 - 160
 			if(a < linePos):
 				contours_left = True
