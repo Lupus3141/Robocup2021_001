@@ -103,18 +103,19 @@ void loop() {
   if (readString != "") {
     Serial.println(readString);
     if (readString == "L") {
-      led(1, 0, 0);
+      led(1, 1, 1);
       fahre(255, 255, 500);
       drehe(-90);
       fahre(-255, -255, 150);
       led(0, 0, 0);
     } if (readString == "R") {
-      led(1, 0, 0);
+      led(1, 1, 1);
       fahre(255, 255, 500);
       drehe(90);
       fahre(-255, -255, 150);
       led(0, 0, 0);
     } if (readString == "D") {
+      led(1, 1, 1);
       drehe(180);
       fahre(-255, -255, 600);
     } if (readString == "gapR") {
@@ -129,7 +130,7 @@ void loop() {
       fahre(0, 0, 0);
     } if (readString == "Rescue") { //Teensy erhält Nachricht vom Raspi und prüft jetzt mit seinem Abstandssensor, ob dort wirklich der Rescuebereich ist
       fahre(0, 0, 0);
-      led(1, 1, 1);
+      led(1, 0, 1);
       if (distanceAvg() < 1300 && distanceAvg() > 800) { //prüft, ob Abstand des Lasersensors stimmen kann
         fahre(0, 0, 0);
         led(1, 0, 0);
