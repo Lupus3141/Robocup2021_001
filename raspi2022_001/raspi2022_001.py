@@ -2,7 +2,7 @@
 # coding=utf-8
 
 # To do:
-# numpy array statt normalen
+# rois anpassen und eventuell cv2.rectangle korrigieren
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
 # Grüne Punkte besser erkennen
 # Dose umfahren und sich dabei nicht von anderen Linien irritieren lassen (neues ROI, ganz links am Kamerabild bzw. einfach alles rechts abschneiden)
@@ -25,7 +25,7 @@ import cv2
 import serial
 
 RESOLUTION = np.array((320, 192))
-CUT = np.array((50, 270, 120, 170)) #eigentlich (50, 270, 120, 192)
+CUT = np.array((50, 270, 150, 192)) #eigentlich (50, 270, 120, 192)
 CUT_GRN = np.array((50, 270, 120, 192)) #eigentlich (50, 270, 120, 192)
 CUT_SILVER = np.array((0, 100, 0, 192)) 
 CUT_RESCUEKIT = np.array((50, 270, 120, 170))
@@ -223,7 +223,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			for i in range(len(contours_grn)):
 				b = cv2.boundingRect(contours_grn[i])
 				x, y, w, h = b
-				#cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 255, 0), 3)
+				cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 255, 0), 3)
 				a = x + w/2 - 160
 				if(a < linePos):
 					contours_left = True
