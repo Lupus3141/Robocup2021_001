@@ -103,21 +103,28 @@ void loop() {
   if (readString != "") {
     Serial.println(readString);
     if (readString == "L") {
-      led(1, 1, 1);
-      fahre(255, 255, 500);
+      led(1, 0, 0);
+      fahre(255, 255, 600);
       drehe(-90);
-      fahre(-255, -255, 150);
-      led(0, 0, 0);
+      fahre(-255, -255, 200);
+      led(0, 0, 0);      
+      fahre(-255, -255, 4);
+      fahre(0, 0, 2000);
     } if (readString == "R") {
-      led(1, 1, 1);
-      fahre(255, 255, 500);
-      drehe(90);
-      fahre(-255, -255, 150);
       led(0, 0, 0);
+      fahre(255, 255, 600);
+      drehe(90);
+      fahre(-255, -255, 200);
+      led(0, 0, 0);
+      fahre(-255, -255, 4);
+      fahre(0, 0, 2000);
     } if (readString == "D") {
       led(1, 1, 1);
-      drehe(180);
-      fahre(-255, -255, 600);
+      fahre(255, 255, 300);
+      drehe(180);      
+      fahre(-255, -255, 500);
+      fahre(-255, -255, 4);
+      fahre(0, 0, 2000);
     } if (readString == "gapR") {
       fahre(0, 0, 0);
       beep(50);
@@ -150,7 +157,13 @@ void loop() {
         int motorSpeedL = MOTORSPEED + x * MULTIPLIKATOR;
         int motorSpeedR = MOTORSPEED - x * MULTIPLIKATOR;
 
-        fahre(motorSpeedL, motorSpeedR, 0);
+        if (getYOrientation() > 15.00) {   
+          fahre(motorSpeedL * 1.5, motorSpeedR * 1.5, 0); 
+        } else if (getYOrientation() < -15.00) {
+          fahre(motorSpeedL * 0.5, motorSpeedR * 0.5, 0);
+        } else {
+          fahre(motorSpeedL, motorSpeedR, 0);
+        }
       }
       dose();
     }

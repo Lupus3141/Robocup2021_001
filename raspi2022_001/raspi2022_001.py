@@ -2,6 +2,8 @@
 # coding=utf-8
 
 # To do:
+# 
+# skipped
 # rois anpassen
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
 # Grüne Punkte besser erkennen
@@ -157,7 +159,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			b = cv2.boundingRect(contours_blk[i])
 			x, y, w, h = b
 			a = int(abs(x + w / 2 - 160 - lastLinePos))
-			cv2.rectangle(image_rgb, (x, y + CUT[2] + CUT[0]), (x + w, y + h + CUT[2] + CUT[0]), (0, 0, 0), 2) #rechteck um schwarze Konturen
+			cv2.rectangle(image_rgb, (x, y + CUT[2] + CUT[0]), (x + w, y + h + CUT[2] + CUT[0]), (70, 70, 70), 2) #rechteck um schwarze Konturen
 			if(a < nearest):
 				nearest = a
 				index = i
@@ -202,7 +204,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 					ser.write(b'D') 
 					print("deadend") 
 					print("Send: D")
-					delay(1)
+					#delay(1)
 				elif(s >= 6):
 					#ser.write(b'S')
 					#delay(0.2)
@@ -211,11 +213,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 					if(left > right):
 						ser.write(b'L')
 						print("Send: L")
-						delay(0.5)
+						#delay(0.5)
 					elif(right > left):
 						ser.write(b'R')
 						print("Send: R")
-						delay(0.5)
+						#delay(0.5)
 				grn_counter = 0
 				grn_list.clear()
 				#print("List cleared!")
