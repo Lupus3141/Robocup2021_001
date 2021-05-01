@@ -24,10 +24,10 @@ import time
 import cv2
 import serial
 
-CUT = np.array((250, 320, 0, 180)) #eigentlich (50, 270, 120, 192)
-CUT_GRN = np.array((150, 250, 0, 180)) #eigentlich (50, 270, 120, 192)
-CUT_SILVER = np.array((0, 100, 0, 180)) 
-CUT_RESCUEKIT = np.array((50, 270, 120, 170))
+CUT = (50, 270, 120, 192) #eigentlich (50, 270, 120, 192)
+CUT_GRN = (50, 270, 80, 192) #eigentlich (50, 270, 120, 192)
+CUT_SILVER = (0, 100, 0, 180)
+CUT_RESCUEKIT = (50, 270, 120, 170)
 
 
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #USB "Adresse" und Baudrate des Arduinos
@@ -38,15 +38,16 @@ while(not ser.is_open):
 print("Opened:", ser.name, "aka Teensy 3.6") 
 
 camera = PiCamera()
-camera.resolution = (320, 180)
+camera.resolution = (320, 192)
 camera.rotation = 0
 camera.framerate = 32
-rawCapture = PiRGBArray(camera, size=(320, 180))
+rawCapture = PiRGBArray(camera, size=(320, 192))
 rawCaptureCircles = PiRGBArray(camera, size=(320, 192))
 
-time.sleep(0.5) #wartet kurz, damit Arduino und Kamera bereit sind
+time.sleep(0.2) #wartet kurz, damit Arduino und Kamera bereit sind
 framesTotal = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 startTime = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
+timeWaitet = 0 # zählt, wie lange time.sleep im ganzen Programm insgesamt aufgerufen wurden und zieht diese Zeit bei Berechnung der FPS ab
 lastLinePos = 0
 LinePosLastLoop = [0, 0, 0, 0, 0, 0, 0, 0]
 value = 0
@@ -59,7 +60,6 @@ mindist = 300
 x = 0
 y = 0
 r = 0
-
 ##########FUNKTIONEN#############
 def DEBUG():
 	cv2.imshow("image_rgb", image_rgb) #gibt das aktuelle Bild aus
@@ -94,6 +94,13 @@ def mouseRGB(event, x, y, flags, param):
         print("BRG Format: ", colors)
         print("Coordinates of pixel: X: ", x,"Y: ", y)
 
+def delay(zeit):
+	global timeWaitet
+	zeit = float(zeit)
+	time.sleep(zeit)
+	timeWaitet = timeWaitet + zeit
+	print(timeWaitet)
+
 ##############################################################################################
 
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
@@ -101,7 +108,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	image_rgb = image
 
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
-	#cv2.GaussianBlur(image, ((9, 9)), 2, 2)
+	cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
 	cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
@@ -126,7 +133,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	### Silbererkennung:
 	if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
 	   x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) # erstellt Rechteck um die Konturen 
-	   #cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) #malt dieses Rechteck auch ins Bild
+	   cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) #malt dieses Rechteck auch ins Bild
 	   #print("kein silber erkannt")
 	   if rescueCounter > 2:
 	   	rescueCounter = rescueCounter - 3
@@ -137,7 +144,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
 			read_serial = ser.readline().decode('ascii') #schaut, ob Daten (in diesem Fall trigger fuer Rescuebereich) empfangen wurden
 			if read_serial == '8\r\n': #da ist wirklich der Rescuebereich
-				time.sleep(0.1)
+				delay(0.1)
 				cv2.destroyAllWindows()
 				break
 			else:
@@ -158,12 +165,13 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		x, y, w, h = b
 		#print(w)
 		if(w > 319): #falls sehr viel schwarz zu sehen ist, sendet er das an den Arduino
+			#cv2.putText(image_rgb, "intersection", (50, 50), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (0, 0, 255), 3)
 			ser.write(b'S')
 			#print("Skipped")
-			#time.sleep(0.15)
+			#delay(0.15)
 		linePos = int(x + w / 2 - 160)
 		cv2.rectangle(image_rgb, (x, y + CUT[2]), (x + w, y + h + CUT[2]), (0, 0, 0), 2) #rechteck um schwarze Konturen
-		cv2.putText(image_rgb, str(linePos),(320, 90), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255, 0, 0), 3)
+		#cv2.putText(image_rgb, str(linePos),(50, 50), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255, 0, 0), 3)
 		#cv2.line(image_rgb, (linePos + 160, 80), (linePos + 160, 160), (255, 0, 0),2)
 		#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 		lastLinePos = linePos
@@ -195,20 +203,20 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 					ser.write(b'D') 
 					print("deadend") 
 					print("Send: D")
-					time.sleep(1)
+					delay(1)
 				elif(s >= 6):
 					#ser.write(b'S')
-					#time.sleep(0.2)
+					#delay(0.2)
 					print("Send: S")
 				else:
 					if(left > right):
 						ser.write(b'L')
 						print("Send: L")
-						time.sleep(0.5)
+						delay(0.5)
 					elif(right > left):
 						ser.write(b'R')
 						print("Send: R")
-						time.sleep(0.5)
+						delay(0.5)
 				grn_counter = 0
 				grn_list.clear()
 				#print("List cleared!")
@@ -226,7 +234,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				b = cv2.boundingRect(contours_grn[i])
 				x, y, w, h = b
 				cv2.rectangle(image_rgb, (x, y + CUT_GRN[2] + CUT_GRN[0]), (x + w, y + h + CUT_GRN[2] + CUT_GRN[0]), (0, 255, 0), 3) #rechteck um grüne Konturen, +CUT_GRN[2]??????
-				a = x + w/2 - 160
+				a = x + w / 2 - 160
 				if(a < linePos):
 					contours_left = True
 				elif(a > linePos):
@@ -290,14 +298,14 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				print("Luecke erkannt")
 				if LinePosLastLoop[7] > 10: #vor 6 Loop Durchlaeufen war str(linePos).encode() > 0, weshalb sich der Roboter jetzt ein Stueck nach rechts drehen muss, um die Luecke besser zu ueberfahren
 					print("gapR -> nach rechts drehen...")
-					time.sleep(5)
+					delay(5)
 					#ser.write(b'gapR')
-					time.sleep(0.05)
+					delay(0.05)
 				elif LinePosLastLoop[7] < -10: #vor 6 Loop Durchlaeufen war str(linePos).encode() < 0, weshalb sich der Roboter jetzt ein Stueck nach links drehen muss, um die Luecke besser zu ueberfahren
 					print("gapL -> nach links drehen...")
-					time.sleep(5)
+					delay(5)
 					#ser.write(b'gapL')
-					time.sleep(0.05)
+					delay(0.05)
 				elif LinePosLastLoop[7] == 0:
 					print("LinePosLastLoop[7] ist leider 0")
 				else: #fahre ein Stückchen gerade aus
@@ -325,7 +333,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 	key = cv2.waitKey(1) & 0xFF
 	if key == ord("q"):
-		print("Avg. FPS:", int(framesTotal / (time.time()-startTime))) #sendet durchsch. Bilder pro Sekunde (FPS)
+
+		print("Avg. FPS:", int(framesTotal / (time.time() - startTime - timeWaitet))) #sendet durchsch. Bilder pro Sekunde (FPS)
 		camera.close()
 		exit()
 		#break
@@ -339,7 +348,7 @@ camera.rotation = 0
 camera.framerate = 32
 rawCapture = PiRGBArray(camera, size=ResolutionRescue)
 rawCaptureCircles = PiRGBArray(camera, size=ResolutionRescue)
-time.sleep(0.5) #wartet kurz, damit Teensy und Kamera bereit sind
+delay(0.5) #wartet kurz, damit Teensy und Kamera bereit sind
 print("Rescue program started")
 framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
