@@ -3,8 +3,7 @@
 
 # To do:
 # 
-# skipped
-# rois anpassen
+# raspi übertakten
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
 # Grüne Punkte besser erkennen
 # Dose umfahren und sich dabei nicht von anderen Linien irritieren lassen (neues ROI, ganz links am Kamerabild bzw. einfach alles rechts abschneiden)
@@ -159,7 +158,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			b = cv2.boundingRect(contours_blk[i])
 			x, y, w, h = b
 			a = int(abs(x + w / 2 - 160 - lastLinePos))
-			cv2.rectangle(image_rgb, (x, y + CUT[2] + CUT[0]), (x + w, y + h + CUT[2] + CUT[0]), (70, 70, 70), 2) #rechteck um schwarze Konturen
+			cv2.rectangle(image_rgb, (x, y + CUT[2] + CUT[0]), (x + w, y + h + CUT[2] + CUT[0]), (0, 106, 255), 2) #rechteck um schwarze Konturen
 			if(a < nearest):
 				nearest = a
 				index = i
@@ -167,12 +166,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		x, y, w, h = b
 		#print(w)
 		if(w > 300): #falls sehr viel schwarz zu sehen ist, sendet er das an den Arduino
-			cv2.putText(image_rgb, "intersection", (50, 50), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (0, 0, 255), 3)
+			cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 			ser.write(b'S')
-			#print("Skipped")
-			#delay(0.15)
+			print("Send: S")
 		linePos = int(x + w / 2 - 160)
-		cv2.putText(image_rgb, str(linePos),(50, 50), cv2.FONT_HERSHEY_SCRIPT_SIMPLEX, 2, (255, 0, 0), 3)
+		cv2.putText(image_rgb, str(linePos),(linePos + 140, 70), cv2.FONT_HERSHEY_DUPLEX, 2, (0, 106, 255), 2)
 		#cv2.line(image_rgb, (linePos + 160, 80), (linePos + 160, 160), (255, 0, 0),2)
 		#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 		lastLinePos = linePos

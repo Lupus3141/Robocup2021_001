@@ -107,24 +107,21 @@ void loop() {
       fahre(255, 255, 600);
       drehe(-90);
       fahre(-255, -255, 200);
-      led(0, 0, 0);      
-      fahre(-255, -255, 4);
-      fahre(0, 0, 2000);
+      fahre(255, 255, 1);
+      led(0, 0, 0);   
     } if (readString == "R") {
       led(0, 0, 0);
       fahre(255, 255, 600);
       drehe(90);
       fahre(-255, -255, 200);
+      fahre(255, 255, 1);
       led(0, 0, 0);
-      fahre(-255, -255, 4);
-      fahre(0, 0, 2000);
     } if (readString == "D") {
       led(1, 1, 1);
       fahre(255, 255, 300);
       drehe(180);      
       fahre(-255, -255, 500);
-      fahre(-255, -255, 4);
-      fahre(0, 0, 2000);
+      fahre(255, 255, 1);
     } if (readString == "gapR") {
       fahre(0, 0, 0);
       beep(50);
@@ -242,50 +239,50 @@ void drehe(float deg) {
     if (startPos >= 0.0 && startPos <=  182) {
       pln("drehe einfach bis Wunschpos");
       while (getXOrientation() < endPos) {
-        fahre(255, -255, 0);
+        fahre(170, -170, 0);
       }
     } else {
       if (endPos < 359.9999) {
         pln("drehe einfach bis Wunschpos2");
         while (getXOrientation() < endPos) {
-          fahre(255, -255, 0);
+          fahre(170, -170, 0);
         }
       } else {
         pln("drehe bis 0 und dann bis zur Wunschpos");
         while (getXOrientation() > 1.0) { //drehe bis 0
-          fahre(255, -255, 0);
+          fahre(170, -170, 0);
         }
         endPos = endPos - 360.0;
         while (getXOrientation() < endPos) {
-          fahre(255, -255, 0);
+          fahre(170, -170, 0);
         }
       }
     }
-    fahre(-255, 255, 20);
+    fahre(-170, 170, 20);
   } else {
     if (startPos >= 0 && startPos < 182) {
       if (endPos >= 0.0) {
         pln("drehe einfach bis Wunschposition (linksherum)");
         while (getXOrientation() > endPos) {
-          fahre(-255, 255, 0);
+          fahre(-170, 170, 0);
         }
       } else {
         pln("drehe bis 0 und dann bis Wunschposition (linksherum)");
         while (getXOrientation() < 359.0) {
-          fahre(-255, 255, 0);
+          fahre(-170, 170, 0);
         }
         endPos = endPos + 360;
         while (getXOrientation() > endPos) {
-          fahre(-255, 255, 0);
+          fahre(-170, 170, 0);
         }
       }
     } else {
       pln("drehe einfach bis Wunschposition (linksherum)");
       while (getXOrientation() > endPos) {
-        fahre(-255, 255, 0);
+        fahre(-170, 170, 0);
       }
     }
-    fahre(255, -255, 20);
+    fahre(170, -170, 20);
   }
   fahre(0, 0, 0);
 }
