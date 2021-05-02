@@ -106,10 +106,11 @@ def delay(zeit):
 
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
 	image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
+	image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
 	image_rgb = image
 
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
-	cv2.GaussianBlur(image, ((9, 9)), 2, 2)
+	
 
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
 	cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
