@@ -595,13 +595,13 @@ void sucheKugel() {
 
 void rescue() {
   fahre(255, 200, 2000);
-  fahre(255, -255, neunzigGrad);
+  fahre(-255, 255, neunzigGrad);
   fahre(-150, -150, 1000);
   fahre(255, 255, 2000);
-  fahre(0, 0, 0);
+  fahre(0, 0, 1000000);
 
   //ist in der Mitte vom Rescuebereich
-  sucheKugel();
+  //sucheKugel();
 }
 
 void led(int green, int yellow, int red) {

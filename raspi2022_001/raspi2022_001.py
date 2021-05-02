@@ -3,6 +3,7 @@
 
 # To do:
 # 
+# schnellere baudrate
 # raspi übertakten
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
 # Grüne Punkte besser erkennen
@@ -148,6 +149,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			if read_serial == '8\r\n': #da ist wirklich der Rescuebereich
 				delay(0.1)
 				cv2.destroyAllWindows()
+				camera.close()
 				break
 			else:
 				print("Der Teensy hat gesagt, dass es doch nicht der Rescue ist")
@@ -339,7 +341,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		exit()
 		#break
 
-
+time.sleep(1)
 circlesCounter = 0
 ResolutionRescue = (320, 192)
 camera = PiCamera()
@@ -354,10 +356,12 @@ framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzei
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 	image = frame.array
+	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	# detect circles in the image
+
 	#circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2.5, 300)
 	circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
+
 	# ensure at least some circles were found
 	if circles is not None:
 		circlesCounter = circlesCounter + 1
