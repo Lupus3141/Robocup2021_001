@@ -125,6 +125,11 @@ void loop() {
       fahre(-255, -255, 500);
       fahre(-255, -255, 4);
       fahre(0, 0, 2000);
+    } if (readString == "S") {
+      fahre(0, 0, 0);
+      beep(100);
+      fahre(255, 255, 500);
+      fahre(0, 0, 2000);
     } if (readString == "gapR") {
       fahre(0, 0, 0);
       beep(50);
