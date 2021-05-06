@@ -32,7 +32,7 @@ CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 
 
-ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #USB "Adresse" und Baudrate des Arduinos
+ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) #USB "Adresse" und Baudrate des Arduinos
 
 while(not ser.is_open):
 	print("Waiting for Serial...")
@@ -103,6 +103,28 @@ def delay(zeit):
 	timeWaitet = timeWaitet + zeit
 	print(timeWaitet)
 
+def fahre(motorLinks, motorRechts, zeit):
+	send = str(motorLinks) + ':' + str(motorRechts) + ':' + str(zeit)
+	print("Send:", send)
+	ser.write(send.encode())
+	zeit = float(zeit / 1000.0)
+	time.sleep(0.1)
+	while True:
+		readData = ser.readline().decode('ascii').rstrip()
+		if readData == "1":
+			break
+
+def drehe(deg):
+	fahre(0, 0, deg)
+for i in range(4):
+	fahre(255, 255, 1000)
+	drehe(90)
+for i in range(4):
+	fahre(-255, -255, 1000)
+	drehe(-90)
+
+
+time.sleep(100000)
 ##############################################################################################
 
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
@@ -342,6 +364,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		#break
 
 time.sleep(1)
+fahre(200, 255, 1000);
+fahre(-255, 255, 90)
 circlesCounter = 0
 ResolutionRescue = (320, 192)
 camera = PiCamera()

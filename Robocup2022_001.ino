@@ -70,8 +70,10 @@ void setup() {
   //Gyrosensor
   if (!bno.begin())  {
     Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-    while (1);
+    //while (1);
+    beep(1000);
   }
+  p("weiter");
 
   //Lasersensor
   digitalWrite(24, HIGH);
@@ -86,11 +88,12 @@ void setup() {
   bno.setExtCrystalUse(true);
 
   greiferHoch();
+  rescue();
 }
 
 void loop() {
   // Empfangen
-  readString = "";
+  /*readString = "";
 
   while (Serial2.available()) {
     delay(4);
@@ -164,7 +167,7 @@ void loop() {
       }
       dose();
     }
-  }
+  }*/
 }
 
 
@@ -232,18 +235,18 @@ void drehe(float deg) {
   float endPos = startPos + deg;
 
   if (deg >= 0.0) {
-    p("startPos: ");
-    p(startPos);
-    p("endPos: ");
-    p(endPos);
+    //p("startPos: ");
+    //p(startPos);
+    //p("endPos: ");
+    //p(endPos);
     if (startPos >= 0.0 && startPos <=  182) {
-      pln("drehe einfach bis Wunschpos");
+      //pln("drehe einfach bis Wunschpos");
       while (getXOrientation() < endPos) {
         fahre(170, -170, 0);
       }
     } else {
       if (endPos < 359.9999) {
-        pln("drehe einfach bis Wunschpos2");
+        //pln("drehe einfach bis Wunschpos2");
         while (getXOrientation() < endPos) {
           fahre(170, -170, 0);
         }
@@ -258,16 +261,16 @@ void drehe(float deg) {
         }
       }
     }
-    fahre(-170, 170, 20);
+    fahre(-170, 170, 40);
   } else {
     if (startPos >= 0 && startPos < 182) {
       if (endPos >= 0.0) {
-        pln("drehe einfach bis Wunschposition (linksherum)");
+        //pln("drehe einfach bis Wunschposition (linksherum)");
         while (getXOrientation() > endPos) {
           fahre(-170, 170, 0);
         }
       } else {
-        pln("drehe bis 0 und dann bis Wunschposition (linksherum)");
+        //pln("drehe bis 0 und dann bis Wunschposition (linksherum)");
         while (getXOrientation() < 359.0) {
           fahre(-170, 170, 0);
         }
@@ -277,12 +280,12 @@ void drehe(float deg) {
         }
       }
     } else {
-      pln("drehe einfach bis Wunschposition (linksherum)");
+      //pln("drehe einfach bis Wunschposition (linksherum)");
       while (getXOrientation() > endPos) {
         fahre(-170, 170, 0);
       }
     }
-    fahre(170, -170, 20);
+    fahre(170, -170, 40);
   }
   fahre(0, 0, 0);
 }
@@ -594,14 +597,51 @@ void sucheKugel() {
 }
 
 void rescue() {
-  fahre(255, 200, 2000);
-  fahre(-255, 255, neunzigGrad);
-  fahre(-150, -150, 1000);
-  fahre(255, 255, 2000);
-  fahre(0, 0, 1000000);
+  boolean rescue = true;
+  while (rescue) {
+    if (Serial2.available() > 0) {
+      String incomingString = Serial2.readString();
+      //incomingString.trim();
+      String xval = getValue(incomingString, ':', 0);
+      String yval = getValue(incomingString, ':', 1);
+      String zval = getValue(incomingString, ':', 2);
+      int motorLinks = xval.toInt();
+      int motorRechts = yval.toInt();
+      int zeit = zval.toInt();   
+      //pln(incomingString);
+      p(motorLinks);
+      p("  ");
+      p(motorRechts);
+      pln("");
 
-  //ist in der Mitte vom Rescuebereich
-  //sucheKugel();
+      if (motorLinks == 0 && motorRechts == 0) {
+        p("Drehe: ");
+        p(zeit);
+        pln("");
+        drehe(zeit);
+        Serial2.println(1);
+      } else {
+        fahre(motorLinks, motorRechts, zeit);
+        fahre(0, 0, 0);
+        Serial2.println(1);
+      }
+    }
+  }
+}
+
+String getValue(String data, char separator, int index) { //returns ints from mutliple Strings seperated by : 
+    int found = 0;
+    int strIndex[] = { 0, -1 };
+    int maxIndex = data.length() - 1;
+
+    for (int i = 0; i <= maxIndex && found <= index; i++) {
+        if (data.charAt(i) == separator || i == maxIndex) {
+            found++;
+            strIndex[0] = strIndex[1] + 1;
+            strIndex[1] = (i == maxIndex) ? i+1 : i;
+        }
+    }
+    return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 void led(int green, int yellow, int red) {
