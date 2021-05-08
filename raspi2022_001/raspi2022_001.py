@@ -376,9 +376,9 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
 	
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	"""
+	
 	#circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2.5, 300)
-	circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
+	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
 
 	# ensure at least some circles were found
 	if circles is not None:
@@ -411,7 +411,7 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 					print("zurueck fahren")
 			#print(y)
 			#ser.write(str((x - 160) / 10).encode()) # eigentlich : ser.write(str((x-160)/10).encode())	
-	"""
+	cv2.putText(image, str(ballPosition), (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 	rawCaptureCircles.truncate(0)
 	cv2.imshow("Kugel output", image)
 	key = cv2.waitKey(1) & 0xFF
