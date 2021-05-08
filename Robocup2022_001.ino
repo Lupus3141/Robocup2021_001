@@ -73,7 +73,6 @@ void setup() {
     //while (1);
     beep(1000);
   }
-  p("weiter");
 
   //Lasersensor
   digitalWrite(24, HIGH);
@@ -88,12 +87,11 @@ void setup() {
   bno.setExtCrystalUse(true);
 
   greiferHoch();
-  rescue();
 }
 
 void loop() {
   // Empfangen
-  /*readString = "";
+  readString = "";
 
   while (Serial2.available()) {
     delay(4);
@@ -167,7 +165,7 @@ void loop() {
       }
       dose();
     }
-  }*/
+  }
 }
 
 
@@ -597,6 +595,8 @@ void sucheKugel() {
 }
 
 void rescue() {
+  fahre(0, 0, 0);
+  beep(20);
   boolean rescue = true;
   while (rescue) {
     if (Serial2.available() > 0) {
@@ -608,12 +608,13 @@ void rescue() {
       int motorLinks = xval.toInt();
       int motorRechts = yval.toInt();
       int zeit = zval.toInt();   
-      //pln(incomingString);
+      /*
+      pln(incomingString);
       p(motorLinks);
       p("  ");
       p(motorRechts);
       pln("");
-
+      */
       if (motorLinks == 0 && motorRechts == 0) {
         p("Drehe: ");
         p(zeit);

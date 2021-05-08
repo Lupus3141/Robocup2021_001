@@ -116,15 +116,7 @@ def fahre(motorLinks, motorRechts, zeit):
 
 def drehe(deg):
 	fahre(0, 0, deg)
-for i in range(4):
-	fahre(255, 255, 1000)
-	drehe(90)
-for i in range(4):
-	fahre(-255, -255, 1000)
-	drehe(-90)
 
-
-time.sleep(100000)
 ##############################################################################################
 
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
@@ -169,7 +161,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
 			read_serial = ser.readline().decode('ascii') #schaut, ob Daten (in diesem Fall trigger fuer Rescuebereich) empfangen wurden
 			if read_serial == '8\r\n': #da ist wirklich der Rescuebereich
-				delay(0.1)
 				cv2.destroyAllWindows()
 				camera.close()
 				break
@@ -364,25 +355,28 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		#break
 
 time.sleep(1)
-fahre(200, 255, 1000);
-fahre(-255, 255, 90)
 circlesCounter = 0
-ResolutionRescue = (320, 192)
 camera = PiCamera()
-camera.resolution = ResolutionRescue #Aufloesung, je niedriger desto schneller das Program
+camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
 camera.rotation = 0
 camera.framerate = 32
-rawCapture = PiRGBArray(camera, size=ResolutionRescue)
-rawCaptureCircles = PiRGBArray(camera, size=ResolutionRescue)
-delay(0.5) #wartet kurz, damit Teensy und Kamera bereit sind
+rawCaptureCircles = PiRGBArray(camera, size=(320, 180))
 print("Rescue program started")
+time.sleep(1)
 framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+
+fahre(255, 200, 2000)
+drehe(90)
+fahre(-255, -255, 500)
+fahre(255, 255, 2000)
+
+for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_video_port=True):
 	image = frame.array
 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
+	
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
+	"""
 	#circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2.5, 300)
 	circles = cv2.HoughCircles(image, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
 
@@ -417,7 +411,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 					print("zurueck fahren")
 			#print(y)
 			#ser.write(str((x - 160) / 10).encode()) # eigentlich : ser.write(str((x-160)/10).encode())	
-	rawCapture.truncate(0)
+	"""
+	rawCaptureCircles.truncate(0)
 	cv2.imshow("Kugel output", image)
 	key = cv2.waitKey(1) & 0xFF
 	framesTotalRescue = framesTotalRescue + 1
