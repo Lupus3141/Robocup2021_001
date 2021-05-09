@@ -608,8 +608,8 @@ void rescue() {
       int motorLinks = xval.toInt();
       int motorRechts = yval.toInt();
       int zeit = zval.toInt();   
-      /*
       pln(incomingString);
+      /*
       p(motorLinks);
       p("  ");
       p(motorRechts);
@@ -620,6 +620,12 @@ void rescue() {
         p(zeit);
         pln("");
         drehe(zeit);
+        Serial2.println(1);
+      } else if (motorLinks == 42 && motorRechts == 42 && zeit == 0) {
+        greiferRunter();
+        Serial2.println(1);
+      } else if (motorLinks == 42 && motorRechts == 42 && zeit == 1) {
+        greiferHoch();
         Serial2.println(1);
       } else {
         fahre(motorLinks, motorRechts, zeit);

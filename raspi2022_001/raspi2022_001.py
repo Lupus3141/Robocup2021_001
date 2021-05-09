@@ -3,6 +3,10 @@
 
 # To do:
 # 
+# raspi kühler (aktiv)
+# nicht nur greifer runter und hoch, sondern auch noch Mittelding für schwarze Ecke
+# autostart von Linefollowerprogramm
+# prüfen, ob auch wirklich eine Kugel aufgenommen wurde
 # schnellere baudrate
 # raspi übertakten
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
@@ -116,6 +120,11 @@ def fahre(motorLinks, motorRechts, zeit):
 
 def drehe(deg):
 	fahre(0, 0, deg)
+
+def greiferRunter():
+	fahre(42, 42, 0) #sende Greifer runter
+def greiferHoch():
+	fahre(42, 42, 1) #sende Greifer hoch
 
 ##############################################################################################
 
@@ -354,8 +363,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		exit()
 		#break
 
-time.sleep(1)
-circlesCounter = 0
+keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
 camera = PiCamera()
 camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
 camera.rotation = 0
@@ -367,7 +375,7 @@ framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzei
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 
 fahre(255, 200, 2000)
-drehe(90)
+drehe(80)
 fahre(-255, -255, 500)
 fahre(255, 255, 2000)
 
@@ -376,13 +384,15 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
 	
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-	
-	#circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2.5, 300)
+
 	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
 
 	# ensure at least some circles were found
 	if circles is not None:
-		circlesCounter = circlesCounter + 1
+		if keineKugelDa > 5: #da Kugel gefunden wurde, macht er den Cnt um 5 kleiner
+			keineKugelDa = keineKugelDa - 5
+		else:
+			keineKugelDa = 0
 		# convert the (x, y) coordinates and radius of the circles to integers
 		circles = np.round(circles[0, :]).astype("int")
 		# loop over the (x, y) coordinates and radius of the circles
@@ -392,31 +402,40 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 			cv2.circle(image, (x, y), r, (255, 255, 0), 4)
 			cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
 			ballPosition = int((x - 160) / 10)
-			if ballPosition > 1:
-				print("send: R")
-				#ser.write(b'R')
-			if ballPosition < -1:
-				print("send: L")
-				#ser.write(b'L')
-			if ballPosition > -1 and ballPosition < 1:
-				print("Ist mittig")
-				if(y >= 95 and not y == 0 and y <= 100):
-					#ser.write(b'P') #sende Befehl fuer Drehung
-					print("perfekt, drehe dich")
-				if(y <= 95 and not y == 0):
-					#ser.write(b'V') #sende Befehl fuer naeher ran fahren
-					print("vor fahren")
-				if(y >= 101 and not y == 0):
-					#ser.write(b'Z') #sende Befehl fuer naeher ran fahren
-					print("zurueck fahren")
-			#print(y)
-			#ser.write(str((x - 160) / 10).encode()) # eigentlich : ser.write(str((x-160)/10).encode())	
-	cv2.putText(image, str(ballPosition), (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
-	rawCaptureCircles.truncate(0)
+			if ballPosition > -2 and ballPosition < 2: #Ball liegt Mittig (Horizontal)
+				print(y)
+				if y > 120 and y < 140: #perfekt ausgerichtet
+					drehe(180)
+					fahre(-255, -255, 30)
+					greiferRunter()
+					greiferHoch()
+				elif y > 170:
+					fahre(-255, -255, 30)
+				elif y > 140:
+					fahre(-255, -255, 10)
+				elif y < 90:
+					fahre(255, 255, 30)
+				elif y < 120:
+					fahre(255, 255, 10)
+				else:
+					print("Kein Fall erkannt für y =", y)
+			elif ballPosition >= 2:
+				fahre(255, -255, 50)
+			elif ballPosition <= -2:
+				fahre(-255, 255, 50)
+		cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+	else:
+		keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
+		if keineKugelDa >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
+			drehe(45)
+			fahre(255, 255, 400)
+	
 	cv2.imshow("Kugel output", image)
+	rawCaptureCircles.truncate(0)
 	key = cv2.waitKey(1) & 0xFF
 	framesTotalRescue = framesTotalRescue + 1
 	if key == ord("q"):
 		print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
+		camera.close()
 		break #beendet Program bzw. bricht aus Endlosschleife aus
 print("Program beendet")
