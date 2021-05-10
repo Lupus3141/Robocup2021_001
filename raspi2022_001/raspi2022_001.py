@@ -29,6 +29,7 @@ import argparse
 import time
 import cv2
 import serial
+import random
 
 CUT = (50, 270, 120, 192) #eigentlich (50, 270, 120, 192)
 CUT_GRN = (50, 270, 80, 192) #eigentlich (50, 270, 120, 192)
@@ -122,15 +123,11 @@ def drehe(deg):
 	fahre(0, 0, deg)
 
 def greiferRunter():
-	send = "greiferRunter"
-	ser.write(send.encode()) #sende Greifer runterwhile True:
-	while True:
-		readData = ser.readline().decode('ascii').rstrip()
-		if readData == "1":
-			break
+	sendeUndWarteAufEmpfang("greiferRunter")
+
 def greiferHoch():
 	sendeUndWarteAufEmpfang("greiferHoch")
-	ser.write(send.encode()) #sende Greifer hochwhile True:
+
 def sendeUndWarteAufEmpfang(send):
 	ser.write(send.encode())
 	while True:
@@ -376,7 +373,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
 turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
-nachVorneCnt = 0
+umdrehungenCnt = 0 #zählt, wie oft schon um 360° gedreht wurde
 camera = PiCamera()
 camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
 camera.rotation = 0
@@ -387,13 +384,11 @@ time.sleep(1)
 framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 
-greiferRunter()
-greiferHoch()
 fahre(255, 200, 2300)
 drehe(80)
 fahre(-255, -255, 500)
-fahre(255, 255, 2000)
-
+sendeUndWarteAufEmpfang("setzeUrsprung") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
+fahre(255, 255, 2000) #fahre in Mitte von resucebereich
 for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_video_port=True):
 	image = frame.array
 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
@@ -426,7 +421,7 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 					greiferHoch()
 
 					#suche schwarze Ecke:
-					drehe(0) #drehe dich wieder zum Ursprung zurück
+					sendeUndWarteAufEmpfang("dreheZuUrsprung")
 				elif y > 170:
 					fahre(-255, -255, 30)
 				elif y > 140:
@@ -443,18 +438,20 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 	else:
 		keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
 		if keineKugelDa >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
-			if turnCnt < 360:	
-				if nachVorneCnt > 0:
-					if turnCnt > 0:			
-						fahre(-255, -255, nachVorneCnt)
-				drehe(45)
-				if nachVorneCnt > 0:
-					fahre(255, 255, nachVorneCnt)
-				turnCnt = turnCnt + 45
+			if turnCnt < 360:
+				if umdrehungenCnt == 0:
+					drehe(45)
+					turnCnt = turnCnt + 45
+				elif umdrehungenCnt == 1:
+					fahre(255, 255, 300)
+					drehe(60)
+					turnCnt = turnCnt + 60
+				else:
+					print("Fertig mit allem, fahre bitte den Rand ab xD")
 			else:
 				print("Habe mich einmal um 360 grad gedreht!")
-				#todo: norde dich einmal ein bzw. drehe dich einmal wieder komplett gerade
-				nachVorneCnt = nachVorneCnt + 400
+				#sendeUndWarteAufEmpfang("dreheZuUrsprung")
+				umdrehungenCnt = umdrehungenCnt + 1
 				turnCnt = 0
 	cv2.imshow("Kugel output", image)
 	rawCaptureCircles.truncate(0)
