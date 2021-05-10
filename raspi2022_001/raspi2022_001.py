@@ -122,10 +122,21 @@ def drehe(deg):
 	fahre(0, 0, deg)
 
 def greiferRunter():
-	fahre(42, 42, 0) #sende Greifer runter
+	send = "greiferRunter"
+	ser.write(send.encode()) #sende Greifer runterwhile True:
+	while True:
+		readData = ser.readline().decode('ascii').rstrip()
+		if readData == "1":
+			break
 def greiferHoch():
-	fahre(42, 42, 1) #sende Greifer hoch
-
+	sendeUndWarteAufEmpfang("greiferHoch")
+	ser.write(send.encode()) #sende Greifer hochwhile True:
+def sendeUndWarteAufEmpfang(send):
+	ser.write(send.encode())
+	while True:
+		readData = ser.readline().decode('ascii').rstrip()
+		if readData == "1":
+			break
 ##############################################################################################
 
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
@@ -364,6 +375,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		#break
 
 keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
+turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
+nachVorneCnt = 0
 camera = PiCamera()
 camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
 camera.rotation = 0
@@ -374,7 +387,9 @@ time.sleep(1)
 framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 
-fahre(255, 200, 2000)
+greiferRunter()
+greiferHoch()
+fahre(255, 200, 2300)
 drehe(80)
 fahre(-255, -255, 500)
 fahre(255, 255, 2000)
@@ -409,6 +424,9 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 					fahre(-255, -255, 30)
 					greiferRunter()
 					greiferHoch()
+
+					#suche schwarze Ecke:
+					drehe(0) #drehe dich wieder zum Ursprung zurück
 				elif y > 170:
 					fahre(-255, -255, 30)
 				elif y > 140:
@@ -417,8 +435,6 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 					fahre(255, 255, 30)
 				elif y < 120:
 					fahre(255, 255, 10)
-				else:
-					print("Kein Fall erkannt für y =", y)
 			elif ballPosition >= 2:
 				fahre(255, -255, 50)
 			elif ballPosition <= -2:
@@ -427,9 +443,19 @@ for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_vide
 	else:
 		keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
 		if keineKugelDa >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
-			drehe(45)
-			fahre(255, 255, 400)
-	
+			if turnCnt < 360:	
+				if nachVorneCnt > 0:
+					if turnCnt > 0:			
+						fahre(-255, -255, nachVorneCnt)
+				drehe(45)
+				if nachVorneCnt > 0:
+					fahre(255, 255, nachVorneCnt)
+				turnCnt = turnCnt + 45
+			else:
+				print("Habe mich einmal um 360 grad gedreht!")
+				#todo: norde dich einmal ein bzw. drehe dich einmal wieder komplett gerade
+				nachVorneCnt = nachVorneCnt + 400
+				turnCnt = 0
 	cv2.imshow("Kugel output", image)
 	rawCaptureCircles.truncate(0)
 	key = cv2.waitKey(1) & 0xFF

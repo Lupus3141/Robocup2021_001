@@ -230,7 +230,7 @@ void fahre(int links, int rechts, int zeit) {
 
 void drehe(float deg) {
   float startPos = getXOrientation();
-  float endPos = startPos + deg;
+  float endPos = startPos + deg - 2; // berechne endpos, aber ziehe 2 Grad ab, weil er immer ein Stück zu weit dreht
 
   if (deg >= 0.0) {
     //p("startPos: ");
@@ -609,28 +609,30 @@ void rescue() {
       int motorRechts = yval.toInt();
       int zeit = zval.toInt();   
       pln(incomingString);
-      /*
-      p(motorLinks);
-      p("  ");
-      p(motorRechts);
-      pln("");
-      */
-      if (motorLinks == 0 && motorRechts == 0) {
-        p("Drehe: ");
-        p(zeit);
-        pln("");
-        drehe(zeit);
-        Serial2.println(1);
-      } else if (motorLinks == 42 && motorRechts == 42 && zeit == 0) {
-        greiferRunter();
-        Serial2.println(1);
-      } else if (motorLinks == 42 && motorRechts == 42 && zeit == 1) {
+      if (incomingString == "greiferHoch") {
         greiferHoch();
         Serial2.println(1);
-      } else {
-        fahre(motorLinks, motorRechts, zeit);
-        fahre(0, 0, 0);
+      } else if (incomingString == "greiferRunter") {
+        greiferRunter();
         Serial2.println(1);
+      } else {
+        /*
+        p(motorLinks);
+        p("  ");
+        p(motorRechts);
+        pln("");
+        */
+        if (motorLinks == 0 && motorRechts == 0) {
+          p("Drehe: ");
+          p(zeit);
+          pln("");
+          drehe(zeit);
+          Serial2.println(1);
+        } else {
+          fahre(motorLinks, motorRechts, zeit);
+          fahre(0, 0, 0);
+          Serial2.println(1);
+        }
       }
     }
   }
