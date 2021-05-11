@@ -238,6 +238,7 @@ void dreheZu(float pwunschpos) {
 			fahre(-130, 130, 0);
 		}
 	}
+	fahre(0, 0, 0);
 }
 
 void drehe(float deg) {
@@ -349,6 +350,19 @@ void greiferRunter() {
 
 	servoGreifer.attach(23);
 	servoGreifer.write(180); //Arm runter
+	delay(900);
+	servoGreifer.detach();
+}
+
+void greiferHalbRunter() {
+	servoSeil.attach(22);
+	servoSeil.write(180); //Seil locker machen, um Kugel aufzunehmen
+	delay(700);
+	servoSeil.detach();
+
+
+	servoGreifer.attach(23);
+	servoGreifer.write(140); //Arm runter
 	delay(900);
 	servoGreifer.detach();
 }
@@ -580,6 +594,45 @@ void rescue() {
 				Serial2.println(1);
 			} else if (incomingString == "dreheZuUrsprung") {
 				dreheZu(ursprung);
+				Serial2.println(1);
+			} else if (incomingString == "fahreZuEckeUndLadeKugelAb") {
+				drehe(90);
+				while (distanceAvg() > 100) {
+					fahre(255, 255, 0);
+					led(0, 0, 1);
+				}
+				fahre(255, 255, 700);
+				fahre(-255, -255, 500);
+				drehe(90);
+				while (distanceAvg() > 130) {
+					fahre(255, 255, 0);
+					led(0, 0, 1);
+				}
+				fahre(0, 0, 0);
+				drehe(90);
+				while (distanceAvg() > 400) {
+					fahre(255, 255, 0);
+				}
+				fahre(0, 0, 0);
+				drehe(45);
+				fahre(255, 255, 650);
+				drehe(90);
+				fahre(-255, -255, 500);
+				fahre(0, 0, 500);
+				greiferHalbRunter();
+				greiferHoch();
+				fahre(255, 255, 1500);
+				dreheZu(ursprung);
+				fahre(255, 255, 800);
+				drehe(90);
+				while (distanceAvg() > 100) {
+					fahre(255, 255, 0);
+					led(0, 0, 1);
+				}
+				fahre(255, 255, 700);
+				fahre(-255, -255, 300);
+				drehe(-90);
+				fahre(0, 0, 0);
 				Serial2.println(1);
 			} else {
 				/*

@@ -134,14 +134,163 @@ def sendeUndWarteAufEmpfang(send):
 		readData = ser.readline().decode('ascii').rstrip()
 		if readData == "1":
 			break
-##############################################################################################
 
+def sucheSchwarzeEcke(pIsWallRight):
+	if pIsWallRight == True:
+		print("suche Ecke mit Wand rechts")
+	else:
+		print("suche Ecke mit Wand links")
+		sendeUndWarteAufEmpfang("fahreZuEckeUndLadeKugelAb")
+
+def sucheAusgang(pIsWallRight):		
+	camera = PiCamera()
+	camera.resolution = (320, 192)
+	camera.rotation = 0
+	camera.framerate = 32
+	rawCapture = PiRGBArray(camera, size=(320, 192))
+	time.sleep(1)
+	if pIsWallRight == True:
+		print("suche Ausgang mit Wand rechts")
+	else:
+		print("suche Ausgang mit Wand links")
+		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
+			image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
+			image = image[50:270][50:192]			
+			image_rgb = image
+
+			image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
+			image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
+
+
+			green = cv2.inRange(image, (30, 20, 20), (100, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
+
+			contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+			
+			print(len(contours_grn))
+			if(len(contours_grn) > 0):
+				cv2.putText(image_rgb, "Exit", (110, 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 106, 255), 3)
+				fahre(255, 255, 1000)
+				camera.close()
+				return
+			else:
+				fahre(255, 255, 50)
+			cv2.drawContours(image_rgb, contours_grn, -1, (0, 106, 255), 3)
+			cv2.imshow("Exit", image_rgb)
+			rawCapture.truncate(0)
+			key = cv2.waitKey(1) & 0xFF
+			if key == ord("q"):
+				break
+
+def rescue():
+	keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
+	turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
+	umdrehungenCnt = 0 #zählt, wie oft schon um 360° gedreht wurde
+
+	camera = PiCamera()
+	camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
+	camera.rotation = 0
+	camera.framerate = 32
+	rawCaptureCircles = PiRGBArray(camera, size=(320, 180))
+	print("Rescue program started")
+	time.sleep(1)
+	framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
+	startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
+
+	isWallRigth = False #wo ist eine Wand im Rescuebereich?
+	fahre(255, 200, 2300)
+	drehe(80)
+	fahre(-255, -255, 500)
+	sendeUndWarteAufEmpfang("setzeUrsprung") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
+	fahre(255, 255, 2000) #fahre in Mitte von resucebereich
+	for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_video_port=True):
+		image = frame.array
+		image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
+		
+		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+		circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
+
+		# ensure at least some circles were found
+		if circles is not None:
+			if keineKugelDa > 5: #da Kugel gefunden wurde, macht er den Cnt um 5 kleiner
+				keineKugelDa = keineKugelDa - 5
+			else:
+				keineKugelDa = 0
+			# convert the (x, y) coordinates and radius of the circles to integers
+			circles = np.round(circles[0, :]).astype("int")
+			# loop over the (x, y) coordinates and radius of the circles
+			for (x, y, r) in circles:
+				#print(y) # y = naehe bzw y Achse
+				# draw the circle in the output image, then draw a rectangle
+				cv2.circle(image, (x, y), r, (255, 255, 0), 4)
+				cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
+				ballPosition = int((x - 160) / 10)
+				if ballPosition > -2 and ballPosition < 2: #Ball liegt Mittig (Horizontal)
+					print(y)
+					if y > 120 and y < 140: #perfekt ausgerichtet
+						drehe(175)
+						fahre(-255, -255, 30)
+						greiferRunter()
+						greiferHoch()
+						#suche schwarze Ecke:
+						sendeUndWarteAufEmpfang("dreheZuUrsprung")
+						time.sleep(3)
+						sucheSchwarzeEcke(isWallRigth)
+						drehe(20)
+						fahre(255, 255, 550)
+						drehe(-10)
+						camera.close()
+						sucheAusgang(isWallRigth)
+						camera.close()
+						return
+					elif y > 170:
+						fahre(-255, -255, 30)
+					elif y > 140:
+						fahre(-255, -255, 10)
+					elif y < 90:
+						fahre(255, 255, 30)
+					elif y < 120:
+						fahre(255, 255, 10)
+				elif ballPosition >= 2:
+					fahre(255, -255, 50)
+				elif ballPosition <= -2:
+					fahre(-255, 255, 50)
+			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+		else:
+			keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
+			if keineKugelDa >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
+				if turnCnt < 360:
+					if umdrehungenCnt == 0:
+						drehe(45)
+						turnCnt = turnCnt + 45
+					elif umdrehungenCnt == 1:
+						fahre(255, 255, 300)
+						drehe(60)
+						turnCnt = turnCnt + 60
+					else:
+						print("Fertig mit allem, fahre bitte den Rand ab xD")
+				else:
+					print("Habe mich einmal um 360 grad gedreht!")
+					#sendeUndWarteAufEmpfang("dreheZuUrsprung")
+					umdrehungenCnt = umdrehungenCnt + 1
+					turnCnt = 0
+		cv2.imshow("Kugel output", image)
+		rawCaptureCircles.truncate(0)
+		key = cv2.waitKey(1) & 0xFF
+		framesTotalRescue = framesTotalRescue + 1
+		if key == ord("q"):
+			print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
+			camera.close()
+			break #beendet Program bzw. bricht aus Endlosschleife aus
+	print("Rescue Program beendet")
+
+##############################################################################################
 for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
 	image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
-	image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
 	image_rgb = image
 
-	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
+	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
+	image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
 	
 
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
@@ -180,7 +329,13 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			if read_serial == '8\r\n': #da ist wirklich der Rescuebereich
 				cv2.destroyAllWindows()
 				camera.close()
-				break
+				rescue()
+				#Initialisiere Kamera:
+				camera = PiCamera()
+				camera.resolution = (320, 192)
+				camera.rotation = 0
+				camera.framerate = 32
+				rawCapture = PiRGBArray(camera, size=(320, 192))
 			else:
 				print("Der Teensy hat gesagt, dass es doch nicht der Rescue ist")
 				ser.write(str(0/10).encode())
@@ -369,96 +524,3 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		print("Avg. FPS:", int(framesTotal / (time.time() - startTime - timeWaitet))) #sendet durchsch. Bilder pro Sekunde (FPS)
 		camera.close()
 		exit()
-		#break
-
-keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
-turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
-umdrehungenCnt = 0 #zählt, wie oft schon um 360° gedreht wurde
-camera = PiCamera()
-camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
-camera.rotation = 0
-camera.framerate = 32
-rawCaptureCircles = PiRGBArray(camera, size=(320, 180))
-print("Rescue program started")
-time.sleep(1)
-framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
-startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
-
-fahre(255, 200, 2300)
-drehe(80)
-fahre(-255, -255, 500)
-sendeUndWarteAufEmpfang("setzeUrsprung") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
-fahre(255, 255, 2000) #fahre in Mitte von resucebereich
-for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_video_port=True):
-	image = frame.array
-	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
-	
-	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
-
-	# ensure at least some circles were found
-	if circles is not None:
-		if keineKugelDa > 5: #da Kugel gefunden wurde, macht er den Cnt um 5 kleiner
-			keineKugelDa = keineKugelDa - 5
-		else:
-			keineKugelDa = 0
-		# convert the (x, y) coordinates and radius of the circles to integers
-		circles = np.round(circles[0, :]).astype("int")
-		# loop over the (x, y) coordinates and radius of the circles
-		for (x, y, r) in circles:
-			#print(y) # y = naehe bzw y Achse
-			# draw the circle in the output image, then draw a rectangle
-			cv2.circle(image, (x, y), r, (255, 255, 0), 4)
-			cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
-			ballPosition = int((x - 160) / 10)
-			if ballPosition > -2 and ballPosition < 2: #Ball liegt Mittig (Horizontal)
-				print(y)
-				if y > 120 and y < 140: #perfekt ausgerichtet
-					drehe(180)
-					fahre(-255, -255, 30)
-					greiferRunter()
-					greiferHoch()
-
-					#suche schwarze Ecke:
-					sendeUndWarteAufEmpfang("dreheZuUrsprung")
-				elif y > 170:
-					fahre(-255, -255, 30)
-				elif y > 140:
-					fahre(-255, -255, 10)
-				elif y < 90:
-					fahre(255, 255, 30)
-				elif y < 120:
-					fahre(255, 255, 10)
-			elif ballPosition >= 2:
-				fahre(255, -255, 50)
-			elif ballPosition <= -2:
-				fahre(-255, 255, 50)
-		cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
-	else:
-		keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
-		if keineKugelDa >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
-			if turnCnt < 360:
-				if umdrehungenCnt == 0:
-					drehe(45)
-					turnCnt = turnCnt + 45
-				elif umdrehungenCnt == 1:
-					fahre(255, 255, 300)
-					drehe(60)
-					turnCnt = turnCnt + 60
-				else:
-					print("Fertig mit allem, fahre bitte den Rand ab xD")
-			else:
-				print("Habe mich einmal um 360 grad gedreht!")
-				#sendeUndWarteAufEmpfang("dreheZuUrsprung")
-				umdrehungenCnt = umdrehungenCnt + 1
-				turnCnt = 0
-	cv2.imshow("Kugel output", image)
-	rawCaptureCircles.truncate(0)
-	key = cv2.waitKey(1) & 0xFF
-	framesTotalRescue = framesTotalRescue + 1
-	if key == ord("q"):
-		print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
-		camera.close()
-		break #beendet Program bzw. bricht aus Endlosschleife aus
-print("Program beendet")
