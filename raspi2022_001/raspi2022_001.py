@@ -190,7 +190,7 @@ def rescue():
 	camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
 	camera.rotation = 0
 	camera.framerate = 32
-	rawCaptureCircles = PiRGBArray(camera, size=(320, 180))
+	rawCapture = PiRGBArray(camera, size=(320, 180))
 	print("Rescue program started")
 	time.sleep(1)
 	framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
@@ -202,7 +202,7 @@ def rescue():
 	fahre(-255, -255, 500)
 	sendeUndWarteAufEmpfang("setzeUrsprung") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
 	fahre(255, 255, 2000) #fahre in Mitte von resucebereich
-	for frame in camera.capture_continuous(rawCaptureCircles, format="bgr", use_video_port=True):
+	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		image = frame.array
 		image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
 		
@@ -224,11 +224,11 @@ def rescue():
 				# draw the circle in the output image, then draw a rectangle
 				cv2.circle(image, (x, y), r, (255, 255, 0), 4)
 				cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
-				ballPosition = int((x - 160) / 10)
-				if ballPosition > -2 and ballPosition < 2: #Ball liegt Mittig (Horizontal)
+				ballPosition = x - 160
+				if ballPosition > -8 and ballPosition < 8: #Ball liegt Mittig (Horizontal)
 					print(y)
 					if y > 120 and y < 140: #perfekt ausgerichtet
-						drehe(175)
+						drehe(177)
 						fahre(-255, -255, 30)
 						greiferRunter()
 						greiferHoch()
@@ -251,10 +251,15 @@ def rescue():
 						fahre(255, 255, 30)
 					elif y < 120:
 						fahre(255, 255, 10)
-				elif ballPosition >= 2:
-					fahre(255, -255, 50)
-				elif ballPosition <= -2:
+				elif ballPosition <= -8 and ballPosition >= -25:
+					fahre(-150, 150, 20)
+				elif ballPosition <= -25:
 					fahre(-255, 255, 50)
+
+				elif ballPosition >= 8 and ballPosition <= 25:
+					fahre(150, -150, 20)
+				elif ballPosition >= 25:
+					fahre(255, -255, 50)
 			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 		else:
 			keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
@@ -275,7 +280,7 @@ def rescue():
 					umdrehungenCnt = umdrehungenCnt + 1
 					turnCnt = 0
 		cv2.imshow("Kugel output", image)
-		rawCaptureCircles.truncate(0)
+		rawCapture.truncate(0)
 		key = cv2.waitKey(1) & 0xFF
 		framesTotalRescue = framesTotalRescue + 1
 		if key == ord("q"):
@@ -285,9 +290,10 @@ def rescue():
 	print("Rescue Program beendet")
 
 ##############################################################################################
-for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
+for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+	print("in loop")
 	image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
-	image_rgb = image
+	image_rgb = image 
 
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
 	image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
@@ -336,6 +342,8 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				camera.rotation = 0
 				camera.framerate = 32
 				rawCapture = PiRGBArray(camera, size=(320, 192))
+				rawCapture.truncate(0)
+				print("nach Initialisierung")
 			else:
 				print("Der Teensy hat gesagt, dass es doch nicht der Rescue ist")
 				ser.write(str(0/10).encode())

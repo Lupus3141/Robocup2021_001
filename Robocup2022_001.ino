@@ -253,50 +253,50 @@ void drehe(float deg) {
 		if (startPos >= 0.0 && startPos <=  182) {
 			//pln("drehe einfach bis Wunschpos");
 			while (getXOrientation() < endPos) {
-				fahre(170, -170, 0);
+				fahre(130, -130, 0);
 			}
 		} else {
 			if (endPos < 359.9999) {
 				//pln("drehe einfach bis Wunschpos2");
 				while (getXOrientation() < endPos) {
-					fahre(170, -170, 0);
+					fahre(130, -130, 0);
 				}
 			} else {
 				pln("drehe bis 0 und dann bis zur Wunschpos");
 				while (getXOrientation() > 1.0) { //drehe bis 0
-					fahre(170, -170, 0);
+					fahre(130, -130, 0);
 				}
 				endPos = endPos - 360.0;
 				while (getXOrientation() < endPos) {
-					fahre(170, -170, 0);
+					fahre(130, -130, 0);
 				}
 			}
 		}
-		fahre(-170, 170, 40);
+		fahre(-130, 130, 40);
 	} else {
 		if (startPos >= 0 && startPos < 182) {
 			if (endPos >= 0.0) {
 				//pln("drehe einfach bis Wunschposition (linksherum)");
 				while (getXOrientation() > endPos) {
-					fahre(-170, 170, 0);
+					fahre(-130, 130, 0);
 				}
 			} else {
 				//pln("drehe bis 0 und dann bis Wunschposition (linksherum)");
 				while (getXOrientation() < 359.0) {
-					fahre(-170, 170, 0);
+					fahre(-130, 130, 0);
 				}
 				endPos = endPos + 360;
 				while (getXOrientation() > endPos) {
-					fahre(-170, 170, 0);
+					fahre(-130, 130, 0);
 				}
 			}
 		} else {
 			//pln("drehe einfach bis Wunschposition (linksherum)");
 			while (getXOrientation() > endPos) {
-				fahre(-170, 170, 0);
+				fahre(-130, 130, 0);
 			}
 		}
-		fahre(170, -170, 40);
+		fahre(130, -130, 40);
 	}
 	fahre(0, 0, 0);
 }
