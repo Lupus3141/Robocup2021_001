@@ -142,13 +142,12 @@ def sucheSchwarzeEcke(pIsWallRight):
 		print("suche Ecke mit Wand links")
 		sendeUndWarteAufEmpfang("fahreZuEckeUndLadeKugelAb")
 
-def sucheAusgang(pIsWallRight):		
+def sucheAusgang(pIsWallRight):	
 	camera = PiCamera()
 	camera.resolution = (320, 192)
 	camera.rotation = 0
 	camera.framerate = 32
 	rawCapture = PiRGBArray(camera, size=(320, 192))
-	time.sleep(1)
 	if pIsWallRight == True:
 		print("suche Ausgang mit Wand rechts")
 	else:
@@ -169,7 +168,7 @@ def sucheAusgang(pIsWallRight):
 			print(len(contours_grn))
 			if(len(contours_grn) > 0):
 				cv2.putText(image_rgb, "Exit", (110, 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 106, 255), 3)
-				fahre(255, 255, 1000)
+				fahre(255, 255, 2000)
 				camera.close()
 				return
 			else:
@@ -180,7 +179,6 @@ def sucheAusgang(pIsWallRight):
 			key = cv2.waitKey(1) & 0xFF
 			if key == ord("q"):
 				break
-
 def rescue():
 	keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
 	turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
@@ -228,7 +226,7 @@ def rescue():
 				if ballPosition > -8 and ballPosition < 8: #Ball liegt Mittig (Horizontal)
 					print(y)
 					if y > 120 and y < 140: #perfekt ausgerichtet
-						drehe(177)
+						drehe(180)
 						fahre(-255, -255, 30)
 						greiferRunter()
 						greiferHoch()
@@ -241,7 +239,6 @@ def rescue():
 						drehe(-10)
 						camera.close()
 						sucheAusgang(isWallRigth)
-						camera.close()
 						return
 					elif y > 170:
 						fahre(-255, -255, 30)
@@ -336,6 +333,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				cv2.destroyAllWindows()
 				camera.close()
 				rescue()
+				print("Nach rescue Funktion")
 				#Initialisiere Kamera:
 				camera = PiCamera()
 				camera.resolution = (320, 192)
