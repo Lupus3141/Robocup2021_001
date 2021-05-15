@@ -124,6 +124,8 @@ void loop() {
 			drehe(180);      
 			fahre(-255, -255, 500);
 			fahre(255, 255, 1);
+		} if (readString == "Rescuekit") {
+			beep(2000);
 		} if (readString == "gapR") {
 			fahre(0, 0, 0);
 			beep(50);
