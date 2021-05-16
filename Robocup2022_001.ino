@@ -87,7 +87,15 @@ void setup() {
 	laserVorne.startContinuous();
 	bno.setExtCrystalUse(true);
 
-	greiferHoch();
+	servoGreifer.attach(23);
+	servoGreifer.write(30); //Arm hoch
+	delay(900);	
+	servoGreifer.detach();
+
+	servoSeil.attach(22);
+	servoSeil.write(180); //Seil locker machen, um Kugel aufzunehmen
+	delay(700);
+	servoSeil.detach();
 }
 
 void loop() {
@@ -124,8 +132,17 @@ void loop() {
 			drehe(180);      
 			fahre(-255, -255, 500);
 			fahre(255, 255, 1);
-		} if (readString == "Rescuekit") {
-			beep(2000);
+		} if (readString == "S") {
+			fahre(255, 255, 200);
+		} if (readString == "A") {
+			fahre(0, 0, 0);
+			drehe(15);
+			drehe(180);
+			fahre(-155, -155, 100);
+			fahre(0, 0, 0);
+			greiferRunter();
+			greiferHoch();
+			drehe(160);
 		} if (readString == "gapR") {
 			fahre(0, 0, 0);
 			beep(50);

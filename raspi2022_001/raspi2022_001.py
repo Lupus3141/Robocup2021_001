@@ -65,16 +65,12 @@ rescueCounter = 0
 rescue = False
 mindist = 300 
 
-cv2.namedWindow('Track')
-cv2.resizeWindow('Track', 700, 512)
 
 x = 0
 y = 0
 r = 0
 
 ##########FUNKTIONEN#############
-def track(x):
-	print(x)
 
 def DEBUG():
 	cv2.imshow("image_rgb", image_rgb) #gibt das aktuelle Bild aus
@@ -308,7 +304,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	image_rgb = image 
 
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
-	image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
+	image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 	
 
 	cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
@@ -319,7 +315,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen	
 
 	line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
-	green = cv2.inRange(cut_grn, (55, 40, 40), (80, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
+	green = cv2.inRange(cut_grn, (55, 200, 40), (80, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
 	silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 	rescuekit = cv2.inRange(cut_rescuekit, (110, 230, 50), (130, 255, 150)) #richtige Werte eintragen
 
@@ -335,8 +331,9 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	index = 0
 
 
-	if len(contours_rescuekit) > 0:
-		ser.write(b'Rescuekit') #sende an teensy, damit er rescuekit aufnehmen kann
+	if len(contours_rescuekit) > 0:		
+		ser.write(b'A')		
+		print("SEND: A")
 
 	### Silbererkennung:
 	if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
@@ -351,23 +348,23 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			print("silber entgueltig erkannt")
 			ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
 			read_serial = ser.readline().decode('ascii') #schaut, ob Daten (in diesem Fall trigger fuer Rescuebereich) empfangen wurden
-		if read_serial == '8\r\n': #da ist wirklich der Rescuebereich	
-			cv2.destroyAllWindows()
-			camera.close()
-			rescue()
-			print("Nach rescue Funktion")
-			#Initialisiere Kamera:
-			camera = PiCamera()
-			camera.resolution = (320, 192)
-			camera.rotation = 0
-			camera.framerate = 32
-			rawCapture = PiRGBArray(camera, size=(320, 192))
-			rawCapture.truncate(0)
-			print("nach Initialisierung")
-		else:
-			print("Der Teensy hat gesagt, dass es doch nicht der Rescue ist")
-			ser.write(str(0/10).encode())
-			rescueCounter = 0
+			if read_serial == '8\r\n': #da ist wirklich der Rescuebereich	
+				cv2.destroyAllWindows()
+				camera.close()
+				rescue()
+				print("Nach rescue Funktion")
+				#Initialisiere Kamera:
+				camera = PiCamera()
+				camera.resolution = (320, 192)
+				camera.rotation = 0
+				camera.framerate = 32
+				rawCapture = PiRGBArray(camera, size=(320, 192))
+				rawCapture.truncate(0)
+				print("nach Initialisierung")
+			else:
+				print("Der Teensy hat gesagt, dass es doch nicht der Rescue ist")
+				ser.write(str(0/10).encode())
+				rescueCounter = 0
 	if(len(contours_blk) > 0):
 		nearest = 1000
 		for i in range(len(contours_blk)):
@@ -384,7 +381,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		if(w > 300): #falls sehr viel schwarz zu sehen ist, sendet er das an den Arduino
 			cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 			ser.write(b'S')
-			print("Send: S")
+			print("Send: Skipped")
 		linePos = int(x + w / 2 - 160)
 		cv2.putText(image_rgb, str(linePos),(linePos + 140, 70), cv2.FONT_HERSHEY_DUPLEX, 2, (0, 106, 255), 2)
 		#cv2.line(image_rgb, (linePos + 160, 80), (linePos + 160, 160), (255, 0, 0),2)
