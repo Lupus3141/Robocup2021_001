@@ -37,8 +37,6 @@ CUT_GRN = (50, 270, 80, 192) #eigentlich (50, 270, 120, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 
-
-time.sleep(3)
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) #USB "Adresse" und Baudrate des Arduinos
 
 while(not ser.is_open):
@@ -182,14 +180,11 @@ def sucheAusgang(pIsWallRight):
 			if(len(contours_grn) > 0):
 				cv2.imshow("Exit", image_rgb)
 				cv2.putText(image_rgb, "Exit", (110, 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 106, 255), 3)
-				fahre(130, 130, 900)
-				fahre(150, 0, 300)
+				fahre(130, 130, 1000)
 				camera.close()
 				cv2.destroyAllWindows()
-				sendeUndWarteAufEmpfang("exit")
-				print("received exit")
 				os.system('python3 test.py')
-				quit()
+				return
 			else:
 				fahre(255, 255, 50)
 			cv2.drawContours(image_rgb, contours_grn, -1, (0, 106, 255), 3)
@@ -353,9 +348,9 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 
 	if len(contours_rescuekit) > 0:		
-		ser.write(b'A')	
-		print("SEND: A")
-		delay(0.5)
+		ser.write(b'STOP')	
+		print("SEND: STOP")
+		exit()
 
 	### Silbererkennung:
 	if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
@@ -369,7 +364,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		if rescueCounter > 10: #hat 10 mal in Folge kein schwarz gesehen -> da ist (wahrscheinlich)	der Rescue Bereich
 			print("silber entgueltig erkannt")
 			cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-			ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
+			#ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
 			read_serial = ser.readline().decode('ascii') #schaut, ob Daten (in diesem Fall trigger fuer Rescuebereich) empfangen wurden
 			if read_serial == '8\r\n': #da ist wirklich der Rescuebereich	
 				cv2.destroyAllWindows()

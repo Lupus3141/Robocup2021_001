@@ -37,7 +37,7 @@ int ledrotPin = 2;
 int voltageDividor = A2;
 
 int xy = 0;
-
+boolean rescueFlag = false;
 int MOTORSPEED = 100;
 int MULTIPLIKATOR = 70;
 
@@ -112,7 +112,16 @@ void loop() {
 
 	if (readString != "") {
 		Serial.println(readString);
-		if (readString == "L") {
+		if (readString == "A") {
+			fahre(0, 0, 0);
+			drehe(10);
+			drehe(180);
+			fahre(-155, -155, 100);
+			fahre(0, 0, 0);
+			greiferRunter();
+			greiferHoch();
+			drehe(160);
+		} if (readString == "L") {
 			led(1, 0, 0);
 			fahre(255, 255, 600);
 			drehe(-90);
@@ -134,15 +143,11 @@ void loop() {
 			fahre(255, 255, 1);
 		} if (readString == "S") {
 			fahre(255, 255, 200);
-		} if (readString == "A") {
+		} if (readString == "STOP") {
+			fahre(255, 255, 700);
 			fahre(0, 0, 0);
-			drehe(15);
-			drehe(180);
-			fahre(-155, -155, 100);
-			fahre(0, 0, 0);
-			greiferRunter();
-			greiferHoch();
-			drehe(160);
+			led(1, 0, 0);
+			fahre(0, 0, 100000);
 		} if (readString == "gapR") {
 			fahre(0, 0, 0);
 			beep(50);
@@ -156,7 +161,7 @@ void loop() {
 		} if (readString == "Rescue") { //Teensy erhält Nachricht vom Raspi und prüft jetzt mit seinem Abstandssensor, ob dort wirklich der Rescuebereich ist
 			fahre(0, 0, 0);
 			led(1, 0, 1);
-			if (distanceAvg() < 1300 && distanceAvg() > 800) { //prüft, ob Abstand des Lasersensors stimmen kann
+			if (rescueFlag == false && distanceAvg() < 1300 && distanceAvg() > 300) { //prüft, ob Abstand des Lasersensors stimmen kann
 				fahre(0, 0, 0);
 				led(1, 0, 0);
 				Serial2.println(8); //sendet an den Raspi, dass dort wirklich der Rescue ist
@@ -183,7 +188,7 @@ void loop() {
 					fahre(motorSpeedL, motorSpeedR, 0);
 				}
 			}
-			dose();
+			doseFalsch();
 		}
 	}
 }
@@ -486,7 +491,27 @@ void debug(bool statement) {
 		Serial.print("mm");
 	}
 }
-
+void doseFalsch() {
+	if (distance() < 50) {
+		if (distance() < 60) { //checkt, ob wirklich ein Hindernis erkannt wurde
+			if (distance() < 60) {
+				fahre(0, 0, 0);
+				led(1, 1, 1);
+				fahre(-255, -255, 200);
+				drehe(50);
+				fahre(255, 255, 200);
+				for (int i = 0; i < 10; i++) {
+					fahre(255, 255, 110);
+					drehe(-5);
+				}
+				fahre(0, 0, 500);
+				fahre(255, 255, 300);
+				drehe(38);
+				fahre(-255, -255, 20);
+			}
+		}
+	}
+}
 void dose() {
 	if (distance() < 50) {
 		if (distance() < 60) { //checkt, ob wirklich ein Hindernis erkannt wurde
@@ -599,9 +624,11 @@ void rescue() {
 			int zeit = zval.toInt();   
 			pln(incomingString);
 			if (incomingString == "greiferHoch") {
+				fahre(0, 0, 0);
 				greiferHoch();
 				Serial2.println(1);
 			} else if (incomingString == "greiferRunter") {
+				fahre(0, 0, 0);
 				greiferRunter();
 				Serial2.println(1);
 			} else if (incomingString == "setzeUrsprung") {
@@ -614,6 +641,12 @@ void rescue() {
 			} else if (incomingString == "dreheZuUrsprung") {
 				dreheZu(ursprung);
 				Serial2.println(1);
+			} else if (incomingString == "exit") {
+				rescueFlag == true;
+				fahre(0, 0, 0);
+				Serial2.println(1);
+				fahre(0, 0, 3000);
+				return;
 			} else if (incomingString == "fahreZuEckeUndLadeKugelAb") {
 				drehe(90);
 				while (distanceAvg() > 100) {
