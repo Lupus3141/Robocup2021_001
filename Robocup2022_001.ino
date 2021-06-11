@@ -92,6 +92,9 @@ void setup() {
 	servoString.write(180); //Seil locker machen, um Kugel aufzunehmen
 	delay(700);
 	servoString.detach();
+	turnRelative(90);
+	drive(0, 0, 2000);
+	turnRelative(-45);
 }
 
 void loop() {
@@ -613,14 +616,14 @@ void rescue() {
 				drive(0, 0, 0);
 				armDown();
 				Serial2.println(1);
-			} else if (incomingString == "setzeorigin") {
+			} else if (incomingString == "setOrigin") {
 				origin = getXOrientation();
 				beep(50);
-				p("origin gesetzt auf Grad: ");
+				p("origin set to: ");
 				p(origin);
 				pln("");
 				Serial2.println(1);
-			} else if (incomingString == "dreheZuorigin") {
+			} else if (incomingString == "turnToOrigin") {
 				turnAbsolute(origin);
 				Serial2.println(1);
 			} else if (incomingString == "exit") {
@@ -629,7 +632,7 @@ void rescue() {
 				Serial2.println(1);
 				drive(0, 0, 3000);
 				return;
-			} else if (incomingString == "fahreZuEckeUndLadeKugelAb") {
+			} else if (incomingString == "driveToBlackCornerAndSaveVictim") {
 				turnRelative(90);
 				while (distanceAvg() > 100) {
 					drive(255, 255, 0);
@@ -676,7 +679,7 @@ void rescue() {
 				pln("");
 				*/
 				if (motorleft == 0 && motorright == 0) {
-					if (duration == 0) { //drehe dich zum origin
+					if (duration == 0) { //drehe dich zum Ursprung
 
 					} else {
 						turnRelative(duration);
