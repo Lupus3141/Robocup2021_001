@@ -1,3 +1,0 @@
-- alles verenglischen (Kommentare und Funktionen, Variablen...)
-- bei Dose nicht einfach halb rum fahren und dann hoffen, dass dort die Linie ist (stattdessen solange drehen, bis wieder eine Linie da ist, hierzu nur die eine Bildhälfte auswerten, in der die Dose nicht zu sehen ist, weil sonst die Dose als schwarz erkannt werden könnte)
-- T-Platter schaffen (gerade Linie, an die eine senkrechte angrenzt)
