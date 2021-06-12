@@ -262,7 +262,7 @@ def rescue():
 						greiferRunter()
 						greiferHoch()
 						#suche schwarze Ecke:
-						sendeUndWarteAufEmpfang("turnToOrigin")
+						sendeUndWarteAufEmpfang("dreheZuUrsprung")
 						time.sleep(3)
 						sucheSchwarzeEcke(isWallRigth)
 						drehe(20)
