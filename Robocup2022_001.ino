@@ -93,9 +93,6 @@ void setup() {
 	servoString.write(180); //Seil locker machen, um Kugel aufzunehmen
 	delay(700);
 	servoString.detach();
-	turnRelative(90);
-	drive(0, 0, 2000);
-	turnRelative(-45);
 }
 
 void loop() {
