@@ -9,7 +9,7 @@ Adafruit_BNO055 bno = Adafruit_BNO055(55);
 Servo servoArm;
 Servo servoString;
 
-VL53L0X laserFront;
+VL53L0X laserVorne;
 
 int motorA1 = 33;
 int motorA2 = 34;
@@ -73,13 +73,14 @@ void setup() {
 
 	//Lasersensor
 	digitalWrite(24, HIGH);
-	laserFront.init();
-	laserFront.setTimeout(500);
-	laserFront.startContinuous();
+	laserVorne.init();
+	laserVorne.setTimeout(500);
+	laserVorne.startContinuous();
 
-	laserFront.init();
-	laserFront.setTimeout(500);
-	laserFront.startContinuous();
+
+	laserVorne.init();
+	laserVorne.setTimeout(500);
+	laserVorne.startContinuous();
 	bno.setExtCrystalUse(true);
 
 	servoArm.attach(23);
@@ -209,12 +210,12 @@ void drive(int left, int right, int duration) {
 		left = -255;
 	}
 
-	/*if (right == 0) {
+
+	if (right == 0) {
 		digitalWrite(motorB1, LOW);
 		digitalWrite(motorB2, LOW);
 		analogWrite(motorBpwm, 0);
 	}
-
 	if (left == 0) {
 		digitalWrite(motorA1, LOW);
 		digitalWrite(motorA2, LOW);
@@ -224,29 +225,23 @@ void drive(int left, int right, int duration) {
 	if (right > 0) {
 		digitalWrite(motorB1, LOW);
 		digitalWrite(motorB2, HIGH);
+		analogWrite(motorBpwm, right);
 	}
 	if (right < 0) {
 		digitalWrite(motorB1, HIGH);
 		digitalWrite(motorB2, LOW);
+		analogWrite(motorBpwm, -right);
 	}
 	if (left > 0) {
 		digitalWrite(motorA1, LOW);
 		digitalWrite(motorA2, HIGH);
+		analogWrite(motorApwm, left);
 	}
 	if (left < 0) {
 		digitalWrite(motorA1, HIGH);
 		digitalWrite(motorA2, LOW);
-	}*/
-
-	digitalWrite(motorA1, left < 0 ? HIGH : LOW);
-	digitalWrite(motorA2, left <= 0 ? LOW : HIGH);
-
-	digitalWrite(motorB1, right < 0 ? HIGH : LOW);
-	digitalWrite(motorB2, right <= 0 ? LOW : HIGH);
-
-	analogWrite(motorApwm, abs(left));
-	analogWrite(motorBpwm, abs(right));
-
+		analogWrite(motorApwm, -left);
+	}
 	delay(duration);
 }
 
@@ -372,6 +367,7 @@ void armDown() {
 	delay(700);
 	servoString.detach();
 
+
 	servoArm.attach(23);
 	servoArm.write(180); //Arm runter
 	delay(900);
@@ -383,6 +379,7 @@ void armHalfDown() {
 	servoString.write(180); //Seil locker machen, um Kugel aufzunehmen
 	delay(700);
 	servoString.detach();
+
 
 	servoArm.attach(23);
 	servoArm.write(140); //Arm runter
@@ -396,6 +393,7 @@ void armUp() {
 	delay(700);
 	servoString.detach();
 
+
 	servoArm.attach(23);
 	servoArm.write(30); //Arm hoch
 	delay(900);
@@ -405,9 +403,9 @@ void armUp() {
 int distance() {
 	//returns distance of the front laser sensor
 
-	int distance = laserFront.readRangeContinuousMillimeters();
+	int distance = laserVorne.readRangeContinuousMillimeters();
 	//Serial.println(distance);
-	if (laserFront.timeoutOccurred()) {
+	if (laserVorne.timeoutOccurred()) {
 		Serial.print("TIMEOUT -> check connections");
 	}
 
@@ -607,7 +605,6 @@ void rescue() {
 			int motorright = yval.toInt();
 			int duration = zval.toInt();   
 			pln(incomingString);
-
 			if (incomingString == "armUp") {
 				drive(0, 0, 0);
 				armUp();
@@ -695,7 +692,7 @@ void rescue() {
 	}
 }
 
-String getValue(String data, char separator, int index) { //returns ints from mutliple Strings seperated by a character
+String getValue(String data, char separator, int index) { //returns ints from mutliple Strings seperated by : 
 	int found = 0;
 	int strIndex[] = { 0, -1 };
 	int maxIndex = data.length() - 1;
@@ -711,7 +708,7 @@ String getValue(String data, char separator, int index) { //returns ints from mu
 }
 
 void led(int green, int yellow, int red) {
-	/*if (red > 1) {
+	if (red > 1) {
 		red = 1;
 	}
 	if (red < 0) {
@@ -730,8 +727,8 @@ void led(int green, int yellow, int red) {
 	}
 	if (yellow < 0) {
 		yellow = 0;
-	}*/
-	digitalWrite(ledGreenPin, constrain(green, 0, 1));
-	digitalWrite(ledYellowPin, constrain(yellow, 0, 1));
-	digitalWrite(ledRedPin, constrain(red, 0, 1));
+	}
+	digitalWrite(ledGreenPin, green);
+	digitalWrite(ledYellowPin, yellow);
+	digitalWrite(ledRedPin, red);
 }
