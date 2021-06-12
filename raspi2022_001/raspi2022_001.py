@@ -84,6 +84,9 @@ def DEBUG():
 	cv2.imshow("mouseRGB", image_rgb)
 	
 def DEBUG_LastLinePos():
+	for i in range(8):
+		print(f'LinePosLastLoop[{i}] = {LinePosLastLoop[i]:5d}')
+	"""
 	print("LinePosLastLoop[0] = ", LinePosLastLoop[0])
 	print("LinePosLastLoop[1] = ", LinePosLastLoop[1])
 	print("LinePosLastLoop[2] = ", LinePosLastLoop[2])
@@ -92,6 +95,7 @@ def DEBUG_LastLinePos():
 	print("LinePosLastLoop[5] = ", LinePosLastLoop[5])
 	print("LinePosLastLoop[6] = ", LinePosLastLoop[6])
 	print("LinePosLastLoop[7] = ", LinePosLastLoop[7])
+	"""
 
 def mouseRGB(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN: #checks mouse left button down condition
@@ -133,27 +137,27 @@ def fahre(motorLinks, motorRechts, zeit):
 def drehe(deg):
 	fahre(0, 0, deg)
 
-def greiferRunter():
-	sendeUndWarteAufEmpfang("armDown")
+def armDown():
+	sendAndWait("armDown")
 
-def greiferHoch():
-	sendeUndWarteAufEmpfang("armUp")
+def armUp():
+	sendAndWait("armUp")
 
-def sendeUndWarteAufEmpfang(send):
+def sendAndWait(send):
 	ser.write(send.encode())
 	while True:
 		readData = ser.readline().decode('ascii').rstrip()
 		if readData == "1":
 			break
 
-def sucheSchwarzeEcke(pIsWallRight):
+def findCorner(pIsWallRight):
 	if pIsWallRight == True:
 		print("suche Ecke mit Wand rechts")
 	else:
 		print("suche Ecke mit Wand links")
-		sendeUndWarteAufEmpfang("driveToBlackCornerAndSaveVictim")
+		sendAndWait("driveToBlackCornerAndSaveVictim")
 
-def sucheAusgang(pIsWallRight):	
+def findExit(pIsWallRight):	
 	camera = PiCamera()
 	camera.resolution = (320, 192)
 	camera.rotation = 0
@@ -184,7 +188,7 @@ def sucheAusgang(pIsWallRight):
 				fahre(150, 0, 300)
 				camera.close()
 				cv2.destroyAllWindows()
-				sendeUndWarteAufEmpfang("exit")
+				sendAndWait("exit")
 				print("received exit")
 				os.system('python3 test.py')
 				quit()
@@ -196,8 +200,9 @@ def sucheAusgang(pIsWallRight):
 			key = cv2.waitKey(1) & 0xFF
 			if key == ord("q"):
 				break
+
 def rescue():
-	keineKugelDa = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
+	noVictim = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
 	turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
 	umdrehungenCnt = 0 #zählt, wie oft schon um 360° gedreht wurde
 
@@ -211,11 +216,11 @@ def rescue():
 	framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 	startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
 
-	isWallRigth = False #wo ist eine Wand im Rescuebereich?
+	isWallRight = False #wo ist eine Wand im Rescuebereich?
 	fahre(255, 200, 1000)
 	drehe(80)
 	fahre(-255, -255, 500)
-	sendeUndWarteAufEmpfang("setOrigin") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
+	sendAndWait("setOrigin") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
 	fahre(255, 255, 300)
 	drehe(-90)
 	fahre(255, 255, 900)
@@ -223,14 +228,15 @@ def rescue():
 	fahre(255, 255, 650)
 	drehe(90)
 	fahre(-255, -255, 800)	
-	greiferRunter()
+	armDown()
 	fahre(255, 255, 20)
 	fahre(-255, -255, 100)
 	fahre(255, 255, 20)
 	fahre(-255, -255, 100)
-	greiferHoch()
+	armUp()
 	fahre(255, 255, 1500)
-	sendeUndWarteAufEmpfang("turnToOrigin")
+	sendAndWait("turnToOrigin")
+
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		image = frame.array
 		image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
@@ -241,10 +247,10 @@ def rescue():
 
 		# ensure at least some circles were found
 		if circles is not None:
-			if keineKugelDa > 5: #da Kugel gefunden wurde, macht er den Cnt um 5 kleiner
-				keineKugelDa = keineKugelDa - 5
+			if noVictim > 5: #da Kugel gefunden wurde, macht er den Cnt um 5 kleiner
+				noVictim = noVictim - 5
 			else:
-				keineKugelDa = 0
+				noVictim = 0
 			# convert the (x, y) coordinates and radius of the circles to integers
 			circles = np.round(circles[0, :]).astype("int")
 			# loop over the (x, y) coordinates and radius of the circles
@@ -259,17 +265,17 @@ def rescue():
 					if y > 120 and y < 140: #perfekt ausgerichtet
 						drehe(180)
 						fahre(-255, -255, 30)
-						greiferRunter()
-						greiferHoch()
+						armDown()
+						armUp()
 						#suche schwarze Ecke:
-						sendeUndWarteAufEmpfang("turnToOrigin")
+						sendAndWait("turnToOrigin")
 						time.sleep(3)
-						sucheSchwarzeEcke(isWallRigth)
+						findCorner(isWallRight)
 						drehe(20)
 						fahre(255, 255, 550)
 						drehe(-10)
 						camera.close()
-						sucheAusgang(isWallRigth)
+						findExit(isWallRight)
 						return
 					elif y > 170:
 						fahre(-255, -255, 30)
@@ -290,8 +296,8 @@ def rescue():
 					fahre(255, -255, 50)
 			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 		else:
-			keineKugelDa = keineKugelDa + 1 #ein Frame ohne Kugel -> erhöhe Zähler
-			if keineKugelDa >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
+			noVictim = noVictim + 1 #ein Frame ohne Kugel -> erhöhe Zähler
+			if noVictim >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
 				if turnCnt < 360:
 					if umdrehungenCnt == 0:
 						drehe(45)
@@ -304,9 +310,10 @@ def rescue():
 						print("Fertig mit allem, fahre bitte den Rand ab xD")
 				else:
 					print("Habe mich einmal um 360 grad gedreht!")
-					#sendeUndWarteAufEmpfang("dreheZuUrsprung")
+					#sendAndWait("dreheZuUrsprung")
 					umdrehungenCnt = umdrehungenCnt + 1
 					turnCnt = 0
+
 		cv2.imshow("Kugel output", image)
 		rawCapture.truncate(0)
 		key = cv2.waitKey(1) & 0xFF
@@ -338,9 +345,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 	rescuekit = cv2.inRange(cut_rescuekit, (110, 230, 50), (130, 255, 150)) #richtige Werte eintragen
 
-
-
-
 	contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 	contours_silver, hierarchy_silver = cv2.findContours(silber.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
@@ -349,7 +353,6 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	linePos = 0
 	index = 0
 
-
 	if len(contours_rescuekit) > 0:		
 		ser.write(b'A')	
 		print("SEND: A")
@@ -357,11 +360,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 
 	### Silbererkennung:
 	if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
-	   x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) # erstellt Rechteck um die Konturen 
-	   #cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) #malt dieses Rechteck auch ins Bild
-	   #print("kein silber erkannt")
-	   if rescueCounter > 2:
-	   	rescueCounter = rescueCounter - 3
+		x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) # erstellt Rechteck um die Konturen 
+		#cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) #malt dieses Rechteck auch ins Bild
+		#print("kein silber erkannt")
+		if rescueCounter > 2:
+			rescueCounter = rescueCounter - 3
+
 	if len(contours_silver) == 0 :
 		rescueCounter = rescueCounter + 1
 		if rescueCounter > 10: #hat 10 mal in Folge kein schwarz gesehen -> da ist (wahrscheinlich)	der Rescue Bereich
@@ -396,6 +400,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			if(a < nearest):
 				nearest = a
 				index = i
+
 		b = cv2.boundingRect(contours_blk[index])
 		x, y, w, h = b
 		#print(w)
@@ -403,11 +408,13 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 			cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 			ser.write(b'S')
 			print("Send: Skipped")
+
 		linePos = int(x + w / 2 - 160)
 		cv2.putText(image_rgb, str(linePos),(linePos + 140, 70), cv2.FONT_HERSHEY_DUPLEX, 2, (0, 106, 255), 2)
 		#cv2.line(image_rgb, (linePos + 160, 80), (linePos + 160, 160), (255, 0, 0),2)
 		#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 		lastLinePos = linePos
+
 	contours_right = False
 	contours_left = False	
 	if(len(contours_grn) > 0):
@@ -462,6 +469,7 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				if(w > 1000):
 					grn_list.append("S")
 					check = False
+
 		if(check):
 			for i in range(len(contours_grn)):
 				b = cv2.boundingRect(contours_grn[i])
@@ -472,11 +480,13 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 					contours_left = True
 				elif(a > linePos):
 					contours_right = True
+
 	else:
 		if(grn_counter > 0):
 			print("abort")
 			grn_counter = 0
 			grn_list = []
+
 	if(contours_left and contours_right):
 		for i in range(len(contours_grn)):
 			b = cv2.boundingRect(contours_grn[i])
@@ -487,8 +497,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				contours_left = True
 			elif(a > linePos):
 				contours_right = True
+
 		if(contours_left and contours_right):
 			grn_list.append("D")
+
 	elif(contours_left):
 		for i in range(len(contours_grn)):
 			b = cv2.boundingRect(contours_grn[i])
@@ -499,10 +511,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				contours_left = True
 			elif(a > linePos):
 				contours_right = True
+
 		if(contours_left):
 			grn_list.append("L")
 			if(grn_counter == 7):
 				grn_list.append("L")
+
 	elif(contours_right):
 		for i in range(len(contours_grn)):
 			b = cv2.boundingRect(contours_grn[i])
@@ -513,10 +527,12 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 				contours_left = True
 			elif(a > linePos):
 				contours_right = True
+
 		if(contours_right):
 			grn_list.append("R")
 			if(grn_counter == 7):
 				grn_list.append("R")
+
 	else:
 		value = str(linePos).encode()
 		value = int(float(value))
@@ -550,9 +566,10 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 		grn_counter = grn_counter - 1
 	framesTotal = framesTotal + 1
 
-
 	rawCapture.truncate(0)
 	DEBUG()
+
+	"""
 	# wird gebraucht, um bei Luecke (-> gapcounter >= Schwellwert) ein Stueck nach rechts oder links zu korrigieren
 	LinePosLastLoop[7] = LinePosLastLoop[6]
 	LinePosLastLoop[6] = LinePosLastLoop[5] 
@@ -562,7 +579,11 @@ for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=
 	LinePosLastLoop[2] = LinePosLastLoop[1] #speichert den vor-vor-vorletzten str(linePos).encode() in Array
 	LinePosLastLoop[1] = LinePosLastLoop[0] #speichert den vor-vorletzten str(linePos).encode() in Array
 	LinePosLastLoop[0] = value #speichert den vorletzten str(linePos).encode() in Array
+	"""
 
+	LinePosLastLoop[0] = value
+	for i in range(1, 8):
+		LinePosLastLoop[i] = LinePosLastLoop[i - 1]
 
 	key = cv2.waitKey(1) & 0xFF
 	if key == ord("q"):
