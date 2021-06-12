@@ -36,6 +36,7 @@ CUT = (50, 270, 120, 192)
 CUT_GRN = (50, 270, 80, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
+CUT_TOP = (120, 200, 40, 110)
 
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) 
 
@@ -51,6 +52,7 @@ startTime = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anz
 timeWaitet = 0 # zählt, wie lange time.sleep im ganzen Programm insgesamt aufgerufen wurden und zieht diese Zeit bei Berechnung der FPS ab
 lastLinePos = 0
 LinePosLastLoop = [0, 0, 0, 0, 0, 0, 0, 0]
+LineWidthLastLoop = 0
 value = 0
 gapcounter = 0
 grn_list = []
@@ -92,21 +94,21 @@ def DEBUG_LastLinePos():
 	"""
 
 def mouseRGB(event, x, y, flags, param):
-    if event == cv2.EVENT_LBUTTONDOWN: #checks mouse left button down condition
-        colorsB = image_rgb[y, x, 0]
-        colorsG = image_rgb[y, x, 1]
-        colorsR = image_rgb[y, x, 2]
-        colors = image_rgb[y, x]
-        """
-        print("Red: ", colorsR)
-        print("Green: ", colorsG)
-        print("Blue: ", colorsB)
-        print("BRG Format: ", colors)
-        print("Coordinates of pixel: X: ", x,"Y: ", y)
-        """
-        colour = np.uint8([[[colorsB, colorsG, colorsR]]])
-        colour_hsv = cv2.cvtColor(colour, cv2.COLOR_BGR2HSV)
-        print(colour_hsv)
+	if event == cv2.EVENT_LBUTTONDOWN: #checks mouse left button down condition
+		colorsB = image_rgb[y, x, 0]
+		colorsG = image_rgb[y, x, 1]
+		colorsR = image_rgb[y, x, 2]
+		colors = image_rgb[y, x]
+		"""
+		print("Red: ", colorsR)
+		print("Green: ", colorsG)
+		print("Blue: ", colorsB)
+		print("BRG Format: ", colors)
+		print("Coordinates of pixel: X: ", x,"Y: ", y)
+		"""
+		colour = np.uint8([[[colorsB, colorsG, colorsR]]])
+		colour_hsv = cv2.cvtColor(colour, cv2.COLOR_BGR2HSV)
+		print(colour_hsv)
 
 
 
@@ -151,7 +153,7 @@ def findCorner(pIsWallRight):
 		print("suche Ecke mit Wand links")
 		sendAndWait("driveToBlackCornerAndSaveVictim")
 
-def findExit(pIsWallRight):	
+def findExit(pIsWallRight): 
 	camera = PiCamera()
 	camera.resolution = (320, 192)
 	camera.rotation = 0
@@ -161,16 +163,16 @@ def findExit(pIsWallRight):
 		print("suche Ausgang mit Wand rechts")
 	else:
 		print("suche Ausgang mit Wand links")
-		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):	
+		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):  
 			image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
-			image = image[50:270][50:192]			
+			image = image[50:270][50:192]           
 			image_rgb = image
 
 			image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
 			image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
 
 
-			green = cv2.inRange(image, (30, 20, 20), (100, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
+			green = cv2.inRange(image, (30, 20, 20), (100, 255, 255)) # Kalibrierung gruen  eigentlich (55, 40, 40), (80, 255, 255)
 
 			contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 			
@@ -221,7 +223,7 @@ def rescue():
 	drehe(45)
 	fahre(255, 255, 650)
 	drehe(90)
-	fahre(-255, -255, 800)	
+	fahre(-255, -255, 800)  
 	armDown()
 	fahre(255, 255, 20)
 	fahre(-255, -255, 100)
@@ -324,25 +326,37 @@ while True:
 	camera.rotation = 0
 	camera.framerate = 32
 	rawCapture = PiRGBArray(camera, size=(320, 192))
-	rawCaptureCircles = PiRGBArray(camera, size=(320, 192))
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
 		image_rgb = image 
 
-		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
+		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 		
+		A = 30
+		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 100:
+			cut_top = image[CUT_TOP[0]:CUT_TOP[1]][CUT_TOP[2]:CUT_TOP[3]]            
+			cv2.imshow("cut_top", cut_top)
+			#cv2.GaussianBlur(cut_top, ((9, 9)), 2, 2)
+
+			line_top = cv2.inRange(cut_top, (0, 0, 0), (255, 255, 75))
+
+			contours_top, hierarchy_top = cv2.findContours(line_top.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+			if(len(contours_top) > 0):
+				ser.write(b'S')
+				print("SKIP")
+				delay(0.05)
 
 		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
 		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
 		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 		cut_rescuekit = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
 		
-		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen	
+		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen    
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
-		green = cv2.inRange(cut_grn, (55, 200, 40), (80, 255, 255)) # Kalibrierung gruen	eigentlich (55, 40, 40), (80, 255, 255)
+		green = cv2.inRange(cut_grn, (55, 200, 40), (80, 255, 255)) # Kalibrierung gruen    eigentlich (55, 40, 40), (80, 255, 255)
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (110, 230, 50), (130, 255, 150)) #richtige Werte eintragen
 
@@ -354,8 +368,8 @@ while True:
 		linePos = 0
 		index = 0
 
-		if len(contours_rescuekit) > 0:		
-			ser.write(b'A')	
+		if len(contours_rescuekit) > 0:     
+			ser.write(b'A') 
 			print("SEND: A")
 			delay(0.5)
 
@@ -369,12 +383,12 @@ while True:
 
 		if len(contours_silver) == 0 :
 			rescueCounter = rescueCounter + 1
-			if rescueCounter > 10: #hat 10 mal in Folge kein schwarz gesehen -> da ist (wahrscheinlich)	der Rescue Bereich
+			if rescueCounter > 10: #hat 10 mal in Folge kein schwarz gesehen -> da ist (wahrscheinlich) der Rescue Bereich
 				print("silber entgueltig erkannt")
 				cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
 				read_serial = ser.readline().decode('ascii') #schaut, ob Daten (in diesem Fall trigger fuer Rescuebereich) empfangen wurden
-				if read_serial == '8\r\n': #da ist wirklich der Rescuebereich	
+				if read_serial == '8\r\n': #da ist wirklich der Rescuebereich   
 					cv2.destroyAllWindows()
 					camera.close()
 					rescue()
@@ -405,6 +419,7 @@ while True:
 			b = cv2.boundingRect(contours_blk[index])
 			x, y, w, h = b
 			#print(w)
+			LineWidthLastLoop = w
 			if(w > 300): #falls sehr viel schwarz zu sehen ist, sendet er das an den Arduino
 				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'S')
@@ -417,7 +432,7 @@ while True:
 			lastLinePos = linePos
 
 		contours_right = False
-		contours_left = False	
+		contours_left = False   
 		if(len(contours_grn) > 0):
 			if(grn_counter <= 0):
 				grn_counter = 10
@@ -462,7 +477,7 @@ while True:
 					grn_list.clear()
 					#print("List cleared!")
 					# for c in grn_list:
-					# 	print(c)
+					#   print(c)
 			check = True
 			for i in range(len(contours_blk)):
 					b = cv2.boundingRect(contours_blk[index])
@@ -542,23 +557,23 @@ while True:
 				print(gapcounter)
 				gapcounter = gapcounter + 1
 				# if gapcounter >= 5:
-				# 	#Luecke erkannt
-				# 	gapcounter = 0
-				# 	print("Luecke erkannt")
-				# 	if LinePosLastLoop[7] > 10: #vor 6 Loop Durchlaeufen war str(linePos).encode() > 0, weshalb sich der Roboter jetzt ein Stueck nach rechts drehen muss, um die Luecke besser zu ueberfahren
-				# 		print("gapR -> nach rechts drehen...")
-				# 		delay(5)
-				# 		#ser.write(b'gapR')
-				# 		delay(0.05)
-				# 	elif LinePosLastLoop[7] < -10: #vor 6 Loop Durchlaeufen war str(linePos).encode() < 0, weshalb sich der Roboter jetzt ein Stueck nach links drehen muss, um die Luecke besser zu ueberfahren
-				# 		print("gapL -> nach links drehen...")
-				# 		delay(5)
-				# 		#ser.write(b'gapL')
-				# 		delay(0.05)
-				# 	elif LinePosLastLoop[7] == 0:
-				# 		print("LinePosLastLoop[7] ist leider 0")
-				# 	else: #fahre ein Stückchen gerade aus
-				# 		pass
+				#   #Luecke 
+				#   gapcounter = 0
+				#   print("Luecke erkannt")
+				#   if LinePosLastLoop[7] > 10: #vor 6 Loop Durchlaeufen war str(linePos).encode() > 0, weshalb sich der Roboter jetzt ein Stueck nach rechts drehen muss, um die Luecke besser zu ueberfahren
+				#       print("gapR -> nach rechts drehen...")
+				#       delay(5)
+				#       #ser.write(b'gapR')
+				#       delay(0.05)
+				#   elif LinePosLastLoop[7] < -10: #vor 6 Loop Durchlaeufen war str(linePos).encode() < 0, weshalb sich der Roboter jetzt ein Stueck nach links drehen muss, um die Luecke besser zu ueberfahren
+				#       print("gapL -> nach links drehen...")
+				#       delay(5)
+				#       #ser.write(b'gapL')
+				#       delay(0.05)
+				#   elif LinePosLastLoop[7] == 0:
+				#       print("LinePosLastLoop[7] ist leider 0")
+				#   else: #fahre ein Stückchen gerade aus
+				#       pass
 			else:
 				gapcounter = 0
 				ser.write(str(linePos / 10).encode()) 
