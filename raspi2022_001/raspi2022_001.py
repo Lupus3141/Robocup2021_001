@@ -32,14 +32,12 @@ import serial
 import random
 import os
 
-CUT = (50, 270, 120, 192) #eigentlich (50, 270, 120, 192)
-CUT_GRN = (50, 270, 80, 192) #eigentlich (50, 270, 120, 192)
+CUT = (50, 270, 120, 192)
+CUT_GRN = (50, 270, 80, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 
-
-time.sleep(3)
-ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) #USB "Adresse" und Baudrate des Arduinos
+ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) 
 
 while(not ser.is_open):
 	print("Waiting for Serial...")
@@ -264,7 +262,7 @@ def rescue():
 						greiferRunter()
 						greiferHoch()
 						#suche schwarze Ecke:
-						sendeUndWarteAufEmpfang("dreheZuUrsprung")
+						sendeUndWarteAufEmpfang("turnToOrigin")
 						time.sleep(3)
 						sucheSchwarzeEcke(isWallRigth)
 						drehe(20)
