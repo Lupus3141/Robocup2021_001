@@ -117,14 +117,14 @@ void loop() {
 		} if (readString == "L") {
 			led(1, 0, 0);
 			drive(255, 255, 600);
-			turnRelative(-90);
+			turnRelative(-75);
 			drive(-255, -255, 200);
 			drive(255, 255, 1);
 			led(0, 0, 0);   
 		} if (readString == "R") {
 			led(0, 0, 0);
 			drive(255, 255, 600);
-			turnRelative(90);
+			turnRelative(75);
 			drive(-255, -255, 200);
 			drive(255, 255, 1);
 			led(0, 0, 0);
@@ -137,7 +137,8 @@ void loop() {
 		} if (readString == "S") {
 			drive(255, 255, 200);
 		} if (readString == "STOP") {
-			drive(255, 255, 700);
+			drive(-255, 255, 250);
+			drive(255, 255, 200);
 			drive(0, 0, 100000);
 		} if (readString == "gapR") {
 			drive(0, 0, 0);

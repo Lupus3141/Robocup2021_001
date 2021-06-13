@@ -32,7 +32,7 @@ import serial
 import random
 import os
 
-CUT = (50, 270, 120, 192)
+CUT = (50, 270, 140, 192)
 CUT_GRN = (50, 270, 80, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
@@ -319,6 +319,7 @@ while True:
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 		
+		
 		A = 30
 		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 100:
 			cut_top = image[CUT_TOP[0]:CUT_TOP[1]][CUT_TOP[2]:CUT_TOP[3]]            
@@ -332,7 +333,7 @@ while True:
 				ser.write(b'S')
 				print("SKIP")
 				delay(0.05)
-
+		
 		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]]
 		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] 
 		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
@@ -341,9 +342,9 @@ while True:
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
-		green = cv2.inRange(cut_grn, (55, 200, 40), (80, 255, 255))
+		green = cv2.inRange(cut_grn, (55, 150, 40), (80, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-		rescuekit = cv2.inRange(cut_rescuekit, (110, 230, 50), (130, 255, 150))
+		rescuekit = cv2.inRange(cut_rescuekit, (110, 200, 50), (200, 255, 150))
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -369,7 +370,7 @@ while True:
 			#cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) 
 			if rescueCounter > 2: #lower rescueCnt since there is a black contour
 				rescueCounter = rescueCounter - 3
-
+		"""
 		if len(contours_silver) == 0: #potential silber
 			rescueCounter = rescueCounter + 1
 			if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
@@ -377,7 +378,7 @@ while True:
 				cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
 				read_serial = ser.readline().decode('ascii') 
-				if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
+				if read_serial == '8\\r\\n': #yep, the distance is between 80cm and 130cm 
 					cv2.destroyAllWindows()
 					camera.close()
 					rescue()
@@ -392,6 +393,7 @@ while True:
 					print("Teensy said: there can't be the evacuation zone")
 					ser.write(str(0/10).encode())
 					rescueCounter = 0
+		"""
 		if(len(contours_blk) > 0):
 			nearest = 1000
 			for i in range(len(contours_blk)):
@@ -422,7 +424,7 @@ while True:
 		contours_left = False   
 		if(len(contours_grn) > 0):
 			if(grn_counter <= 0):
-				grn_counter = 10
+				grn_counter = 4
 			else:
 				if(grn_counter == 1):
 					left = 0
@@ -443,7 +445,7 @@ while True:
 							s = s + 1
 							print("S")
 					if(d): #deadend
-						ser.write(b'D') 
+						#ser.write(b'D') 
 						print("deadend") 
 						print("Send: D")
 						#delay(1)
@@ -509,7 +511,7 @@ while True:
 				b = cv2.boundingRect(contours_grn[i])
 				x, y, w, h = b
 				#cv2.rectangle(image_rgb, (x, y + CUT[3]), (x + w, y + h + CUT[3]), (0, 255, 0), 3)
-				a = x + w/2 - 160
+				a = x + w / 2 - 160
 				if(a < linePos):
 					contours_left = True
 				elif(a > linePos):
