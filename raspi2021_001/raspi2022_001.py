@@ -36,40 +36,38 @@ CUT = (50, 270, 120, 192)
 CUT_GRN = (50, 270, 80, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
-CUT_TOP = (120, 200, 40, 110)
+CUT_TOP = (120, 200, 40, 110) #extra cut for skip at intersections
 
-ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) 
+ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) #establish serial connenction 
 
 while(not ser.is_open):
 	print("Waiting for Serial...")
 	time.sleep(0.1)
 print("Opened:", ser.name, "aka Teensy 3.6") 
 
-
-time.sleep(0.2) #wartet kurz, damit Arduino und Kamera bereit sind
-framesTotal = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
-startTime = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
-timeWaitet = 0 # zählt, wie lange time.sleep im ganzen Programm insgesamt aufgerufen wurden und zieht diese Zeit bei Berechnung der FPS ab
-lastLinePos = 0
+framesTotal = 0 #counter for frames
+startTime = time.time() #for FPS calculation at the end of the program
+timeWaitet = 0 #because a normal time.sleep in the loop would distort the FPS calculation, the program counts how long has been waited and subtracs it in the final calculation 
+lastLinePos = 0 #were was the line in the last frame?
 LinePosLastLoop = [0, 0, 0, 0, 0, 0, 0, 0]
 LineWidthLastLoop = 0
 value = 0
-gapcounter = 0
+gapcounter = 0 #gets increased if no line could be found in a frame
 grn_list = []
 grn_counter = 0
 rescueCounter = 0
 rescue = False
-mindist = 300 
+mindist = 300 #minRadius for victims
 
 
 x = 0
 y = 0
 r = 0
 
-##########FUNKTIONEN#############
+########## FUNCTIONS ##########
 
 def DEBUG():
-	cv2.imshow("image_rgb", image_rgb) #gibt das aktuelle Bild aus
+	cv2.imshow("image_rgb", image_rgb)
 	cv2.imshow("image_hsv", image)
 	cv2.imshow("cut", cut)
 	cv2.imshow("cut_green", cut_grn)
@@ -82,18 +80,8 @@ def DEBUG():
 def DEBUG_LastLinePos():
 	for i in range(8):
 		print(f'LinePosLastLoop[{i}] = {LinePosLastLoop[i]:5d}')
-	"""
-	print("LinePosLastLoop[0] = ", LinePosLastLoop[0])
-	print("LinePosLastLoop[1] = ", LinePosLastLoop[1])
-	print("LinePosLastLoop[2] = ", LinePosLastLoop[2])
-	print("LinePosLastLoop[3] = ", LinePosLastLoop[3])
-	print("LinePosLastLoop[4] = ", LinePosLastLoop[4])
-	print("LinePosLastLoop[5] = ", LinePosLastLoop[5])
-	print("LinePosLastLoop[6] = ", LinePosLastLoop[6])
-	print("LinePosLastLoop[7] = ", LinePosLastLoop[7])
-	"""
 
-def mouseRGB(event, x, y, flags, param):
+def mouseRGB(event, x, y, flags, param): #to adjust colour values eg for green dots
 	if event == cv2.EVENT_LBUTTONDOWN: #checks mouse left button down condition
 		colorsB = image_rgb[y, x, 0]
 		colorsG = image_rgb[y, x, 1]
@@ -112,26 +100,25 @@ def mouseRGB(event, x, y, flags, param):
 
 
 
-def delay(zeit):
+def delay(duration):
 	global timeWaitet
-	zeit = float(zeit)
-	time.sleep(zeit)
-	timeWaitet = timeWaitet + zeit
-	print(timeWaitet)
+	duration = float(duration)
+	time.sleep(duration)
+	timeWaitet = timeWaitet + duration
 
-def fahre(motorLinks, motorRechts, zeit):
-	send = str(motorLinks) + ':' + str(motorRechts) + ':' + str(zeit)
+def drive(motorLeft, motorRight, duration):
+	send = str(motorLeft) + ':' + str(motorRight) + ':' + str(duration)
 	print("Send:", send)
 	ser.write(send.encode())
-	zeit = float(zeit / 1000.0)
+	duration = float(duration / 1000.0)
 	time.sleep(0.1)
-	while True:
+	while True: #waits for the teensy to execute the command
 		readData = ser.readline().decode('ascii').rstrip()
-		if readData == "1":
+		if readData == "1": 
 			break
 
-def drehe(deg):
-	fahre(0, 0, deg)
+def turnRelative(deg):
+	drive(0, 0, deg)
 
 def armDown():
 	sendAndWait("armDown")
@@ -139,7 +126,7 @@ def armDown():
 def armUp():
 	sendAndWait("armUp")
 
-def sendAndWait(send):
+def sendAndWait(send): #sends command and waits for receiving the ok
 	ser.write(send.encode())
 	while True:
 		readData = ser.readline().decode('ascii').rstrip()
@@ -153,26 +140,26 @@ def findCorner(pIsWallRight):
 		print("suche Ecke mit Wand links")
 		sendAndWait("driveToBlackCornerAndSaveVictim")
 
-def findExit(pIsWallRight): 
+def findExit(pIsWallRight): #find green strip in the evacuation zone
 	camera = PiCamera()
 	camera.resolution = (320, 192)
 	camera.rotation = 0
 	camera.framerate = 32
 	rawCapture = PiRGBArray(camera, size=(320, 192))
 	if pIsWallRight == True:
-		print("suche Ausgang mit Wand rechts")
+		print("searching for exit with wall right")
 	else:
-		print("suche Ausgang mit Wand links")
+		print("searching for exit with wall left")
 		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):  
-			image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
+			image = frame.array
 			image = image[50:270][50:192]           
 			image_rgb = image
 
-			image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentu
+			image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) #convert brg to hsv
 			image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
 
 
-			green = cv2.inRange(image, (30, 20, 20), (100, 255, 255)) # Kalibrierung gruen  eigentlich (55, 40, 40), (80, 255, 255)
+			green = cv2.inRange(image, (30, 20, 20), (100, 255, 255))
 
 			contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 			
@@ -180,16 +167,15 @@ def findExit(pIsWallRight):
 			if(len(contours_grn) > 0):
 				cv2.imshow("Exit", image_rgb)
 				cv2.putText(image_rgb, "Exit", (110, 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 106, 255), 3)
-				fahre(130, 130, 900)
-				fahre(150, 0, 300)
+				drive(130, 130, 900)
+				drive(150, 0, 300)
 				camera.close()
 				cv2.destroyAllWindows()
 				sendAndWait("exit")
 				print("received exit")
-				os.system('python3 test.py')
-				quit()
+				return
 			else:
-				fahre(255, 255, 50)
+				drive(255, 255, 50)
 			cv2.drawContours(image_rgb, contours_grn, -1, (0, 106, 255), 3)
 			cv2.imshow("Exit", image_rgb)
 			rawCapture.truncate(0)
@@ -198,39 +184,39 @@ def findExit(pIsWallRight):
 				break
 
 def rescue():
-	noVictim = 0 #zählt, in vielen Frames (in Folge) keine Kugel vorhanden war
-	turnCnt = 0 #zählt, um wie viel grad sich der raspi schon gedreht hat
-	umdrehungenCnt = 0 #zählt, wie oft schon um 360° gedreht wurde
+	noVictim = 0 #counter for frames without vitim, if x frames without one -> turn a bit around
+	turnCnt = 0 #how many degrees has the robot turned
+	fullRotationCounter = 0 
 
 	camera = PiCamera()
-	camera.resolution = (320, 180) #Aufloesung, je niedriger desto schneller das Program
+	camera.resolution = (320, 180) 
 	camera.rotation = 0
 	camera.framerate = 32
 	rawCapture = PiRGBArray(camera, size=(320, 180))
 	print("Rescue program started")
 	time.sleep(1)
-	framesTotalRescue = 0 #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
-	startTimeRescue = time.time() #erstellt er, um bei Eingabe von q die durchsch. FPS anzeigen zu koennen
+	framesTotalRescue = 0 
+	startTimeRescue = time.time()
 
-	isWallRight = False #wo ist eine Wand im Rescuebereich?
-	fahre(255, 200, 1000)
-	drehe(80)
-	fahre(-255, -255, 500)
-	sendAndWait("setOrigin") #Roboter ist gerade an einer Wand ausgerichtet und merkt sich daher die pos, um später wieder dorthin drehen zu können
-	fahre(255, 255, 300)
-	drehe(-90)
-	fahre(255, 255, 900)
-	drehe(45)
-	fahre(255, 255, 650)
-	drehe(90)
-	fahre(-255, -255, 800)  
+	isWallRight = False #were is the wall in the evacuation zone?
+	drive(255, 200, 1000)
+	turnRelative(80)
+	drive(-255, -255, 500)
+	sendAndWait("setOrigin") #save absolute position to come back to it afterwards
+	drive(255, 255, 300)
+	turnRelative(-90)
+	drive(255, 255, 900)
+	turnRelative(45)
+	drive(255, 255, 650)
+	turnRelative(90)
+	drive(-255, -255, 800)  
 	armDown()
-	fahre(255, 255, 20)
-	fahre(-255, -255, 100)
-	fahre(255, 255, 20)
-	fahre(-255, -255, 100)
+	drive(255, 255, 20)
+	drive(-255, -255, 100)
+	drive(255, 255, 20)
+	drive(-255, -255, 100)
 	armUp()
-	fahre(255, 255, 1500)
+	drive(255, 255, 1500)
 	sendAndWait("turnToOrigin")
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
@@ -243,7 +229,7 @@ def rescue():
 
 		# ensure at least some circles were found
 		if circles is not None:
-			if noVictim > 5: #da Kugel gefunden wurde, macht er den Cnt um 5 kleiner
+			if noVictim > 5: #victim in the current frame -> lower noVictim counter
 				noVictim = noVictim - 5
 			else:
 				noVictim = 0
@@ -251,63 +237,62 @@ def rescue():
 			circles = np.round(circles[0, :]).astype("int")
 			# loop over the (x, y) coordinates and radius of the circles
 			for (x, y, r) in circles:
-				#print(y) # y = naehe bzw y Achse
+				#print(y) #y pos of victim
 				# draw the circle in the output image, then draw a rectangle
 				cv2.circle(image, (x, y), r, (255, 255, 0), 4)
 				cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
 				ballPosition = x - 160
-				if ballPosition > -8 and ballPosition < 8: #Ball liegt Mittig (Horizontal)
+				if ballPosition > -8 and ballPosition < 8: #Victim is horizontal aligned
 					print(y)
-					if y > 120 and y < 140: #perfekt ausgerichtet
-						drehe(180)
-						fahre(-255, -255, 30)
+					if y > 120 and y < 140: #turn around and grap ball
+						turnRelative(180)
+						drive(-255, -255, 30)
 						armDown()
 						armUp()
-						#suche schwarze Ecke:
+						#turn to orogin and search for the black corner
 						sendAndWait("turnToOrigin")
-						time.sleep(3)
 						findCorner(isWallRight)
-						drehe(20)
-						fahre(255, 255, 550)
-						drehe(-10)
+						turnRelative(20)
+						drive(255, 255, 550)
+						turnRelative(-10)
 						camera.close()
 						findExit(isWallRight)
 						return
 					elif y > 170:
-						fahre(-255, -255, 30)
+						drive(-255, -255, 30)
 					elif y > 140:
-						fahre(-255, -255, 10)
+						drive(-255, -255, 10)
 					elif y < 90:
-						fahre(255, 255, 30)
+						drive(255, 255, 30)
 					elif y < 120:
-						fahre(255, 255, 10)
+						drive(255, 255, 10)
 				elif ballPosition <= -8 and ballPosition >= -25:
-					fahre(-150, 150, 20)
+					drive(-150, 150, 20)
 				elif ballPosition <= -25:
-					fahre(-255, 255, 50)
+					drive(-255, 255, 50)
 
 				elif ballPosition >= 8 and ballPosition <= 25:
-					fahre(150, -150, 20)
+					drive(150, -150, 20)
 				elif ballPosition >= 25:
-					fahre(255, -255, 50)
+					drive(255, -255, 50)
 			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 		else:
-			noVictim = noVictim + 1 #ein Frame ohne Kugel -> erhöhe Zähler
-			if noVictim >= 10: #10 mal in Folge keine Kugel gefunden -> Fahre ein Stücl weiter
+			noVictim = noVictim + 1 #one frame without victim -> increase counter
+			if noVictim >= 10: #No victim for 10 frames -> turn a bit
 				if turnCnt < 360:
-					if umdrehungenCnt == 0:
-						drehe(45)
+					if fullRotationCounter == 0:
+						turnRelative(45)
 						turnCnt = turnCnt + 45
-					elif umdrehungenCnt == 1:
-						fahre(255, 255, 300)
-						drehe(60)
+					elif fullRotationCounter == 1:
+						drive(255, 255, 300)
+						turnRelative(60)
 						turnCnt = turnCnt + 60
 					else:
-						print("Fertig mit allem, fahre bitte den Rand ab xD")
+						print("done with a 360 deg turn")
 				else:
-					print("Habe mich einmal um 360 grad gedreht!")
+					print("turned full 360 degs")
 					#sendAndWait("dreheZuUrsprung")
-					umdrehungenCnt = umdrehungenCnt + 1
+					fullRotationCounter = fullRotationCounter + 1
 					turnCnt = 0
 
 		cv2.imshow("Kugel output", image)
@@ -317,8 +302,8 @@ def rescue():
 		if key == ord("q"):
 			print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
 			camera.close()
-			break #beendet Program bzw. bricht aus Endlosschleife aus
-	print("Rescue Program beendet")
+			break
+	print("Rescue Program stopped")
 ##############################################################################################
 while True:
 	camera = PiCamera()
@@ -328,7 +313,7 @@ while True:
 	rawCapture = PiRGBArray(camera, size=(320, 192))
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-		image = frame.array #speichert das aktuelle Bild der Kamera in Variable ab
+		image = frame.array
 		image_rgb = image 
 
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
@@ -348,17 +333,17 @@ while True:
 				print("SKIP")
 				delay(0.05)
 
-		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]] # Teil des frames fuer die Linienerkennung ausschneiden
-		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] # Teil des frames fuer die Gruenerkennung ausschneiden (etwas groeßer)
+		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]]
+		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] 
 		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 		cut_rescuekit = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
 		
-		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #den Bereich für die Silbererkennung noch mal extra verschwimmen lassen    
+		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
-		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) # Kalibrierung schwarz eigentlich (0, 0, 0), (255, 255, 75))
-		green = cv2.inRange(cut_grn, (55, 200, 40), (80, 255, 255)) # Kalibrierung gruen    eigentlich (55, 40, 40), (80, 255, 255)
+		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
+		green = cv2.inRange(cut_grn, (55, 200, 40), (80, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-		rescuekit = cv2.inRange(cut_rescuekit, (110, 230, 50), (130, 255, 150)) #richtige Werte eintragen
+		rescuekit = cv2.inRange(cut_rescuekit, (110, 230, 50), (130, 255, 150))
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -369,45 +354,42 @@ while True:
 		index = 0
 
 		if len(contours_rescuekit) > 0:  
-		"""   
+			ser.write(b'STOP') 
+			print("SEND: STOP")
+			"""   
 			ser.write(b'A') 
 			print("SEND: A")
 			delay(0.5)
-		"""
-			ser.write(b'STOP') 
-			print("SEND: STOP")
+			"""
 
 
-		### Silbererkennung:
-		if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
-			x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) # erstellt Rechteck um die Konturen 
-			#cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) #malt dieses Rechteck auch ins Bild
-			#print("kein silber erkannt")
-			if rescueCounter > 2:
+		### silverdetection:
+		if len(contours_silver) > 0: #black contour > 0 -> no silver
+			x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) #make rectangle around contour
+			#cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) 
+			if rescueCounter > 2: #lower rescueCnt since there is a black contour
 				rescueCounter = rescueCounter - 3
 
-		if len(contours_silver) == 0 :
+		if len(contours_silver) == 0: #potential silber
 			rescueCounter = rescueCounter + 1
-			if rescueCounter > 10: #hat 10 mal in Folge kein schwarz gesehen -> da ist (wahrscheinlich) der Rescue Bereich
-				print("silber entgueltig erkannt")
+			if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
+				print("detected silver")
 				cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-				ser.write(b'Rescue') #sendet an den Teensy, dass er silber erkannt hat
-				read_serial = ser.readline().decode('ascii') #schaut, ob Daten (in diesem Fall trigger fuer Rescuebereich) empfangen wurden
-				if read_serial == '8\r\n': #da ist wirklich der Rescuebereich   
+				ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
+				read_serial = ser.readline().decode('ascii') 
+				if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
 					cv2.destroyAllWindows()
 					camera.close()
 					rescue()
-					print("Nach rescue Funktion")
-					#Initialisiere Kamera:
+
 					camera = PiCamera()
 					camera.resolution = (320, 192)
 					camera.rotation = 0
 					camera.framerate = 32
 					rawCapture = PiRGBArray(camera, size=(320, 192))
 					rawCapture.truncate(0)
-					print("nach Initialisierung")
 				else:
-					print("Der Teensy hat gesagt, dass es doch nicht der Rescue ist")
+					print("Teensy said: there can't be the evacuation zone")
 					ser.write(str(0/10).encode())
 					rescueCounter = 0
 		if(len(contours_blk) > 0):
@@ -425,7 +407,7 @@ while True:
 			x, y, w, h = b
 			#print(w)
 			LineWidthLastLoop = w
-			if(w > 300): #falls sehr viel schwarz zu sehen ist, sendet er das an den Arduino
+			if(w > 300): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
 				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'S')
 				print("Send: Skipped")
@@ -460,7 +442,7 @@ while True:
 						elif(c == "S"):
 							s = s + 1
 							print("S")
-					if(d): #hat doppel Gruen erkannt
+					if(d): #deadend
 						ser.write(b'D') 
 						print("deadend") 
 						print("Send: D")
@@ -495,7 +477,7 @@ while True:
 				for i in range(len(contours_grn)):
 					b = cv2.boundingRect(contours_grn[i])
 					x, y, w, h = b
-					cv2.rectangle(image_rgb, (x, y + CUT_GRN[2] + CUT_GRN[0]), (x + w, y + h + CUT_GRN[2] + CUT_GRN[0]), (0, 255, 0), 3) #rechteck um grüne Konturen, +CUT_GRN[2]??????
+					cv2.rectangle(image_rgb, (x, y + CUT_GRN[2] + CUT_GRN[0]), (x + w, y + h + CUT_GRN[2] + CUT_GRN[0]), (0, 255, 0), 3) #rectangle around green contours
 					a = x + w / 2 - 160
 					if(a < linePos):
 						contours_left = True
@@ -558,26 +540,25 @@ while True:
 			value = str(linePos).encode()
 			value = int(float(value))
 
-			if value == 0: #value == 0 -> Roboter befindet sich in einer Luecke, weil er keine Linie finden kann
-				print(gapcounter)
+			if value == 0: #value == 0 -> there must be a gap
+				print("Gapcounter:", gapcounter)
 				gapcounter = gapcounter + 1
-				# if gapcounter >= 5:
-				#   #Luecke 
+				# if gapcounter >= 5: #5 frames without black contours: 
 				#   gapcounter = 0
-				#   print("Luecke erkannt")
-				#   if LinePosLastLoop[7] > 10: #vor 6 Loop Durchlaeufen war str(linePos).encode() > 0, weshalb sich der Roboter jetzt ein Stueck nach rechts drehen muss, um die Luecke besser zu ueberfahren
-				#       print("gapR -> nach rechts drehen...")
+				#   print("detected gap")
+				#   if LinePosLastLoop[7] > 10: #6 frames ago, the line was on the right of the robot:
+				#       print("gapR -> turn a bit rigth to align to the line...")
 				#       delay(5)
 				#       #ser.write(b'gapR')
 				#       delay(0.05)
-				#   elif LinePosLastLoop[7] < -10: #vor 6 Loop Durchlaeufen war str(linePos).encode() < 0, weshalb sich der Roboter jetzt ein Stueck nach links drehen muss, um die Luecke besser zu ueberfahren
-				#       print("gapL -> nach links drehen...")
+				#   elif LinePosLastLoop[7] < -10: #6 frames ago, the line was on the left of the robot:
+				#       print("gapL -> turn a bit left to align to the line...")
 				#       delay(5)
 				#       #ser.write(b'gapL')
 				#       delay(0.05)
 				#   elif LinePosLastLoop[7] == 0:
 				#       print("LinePosLastLoop[7] ist leider 0")
-				#   else: #fahre ein Stückchen gerade aus
+				#   else: #"boost" a bit straigth forward
 				#       pass
 			else:
 				gapcounter = 0
@@ -591,15 +572,15 @@ while True:
 		DEBUG()
 
 		"""
-		# wird gebraucht, um bei Luecke (-> gapcounter >= Schwellwert) ein Stueck nach rechts oder links zu korrigieren
+		# save last 7 positions of the line
 		LinePosLastLoop[7] = LinePosLastLoop[6]
 		LinePosLastLoop[6] = LinePosLastLoop[5] 
 		LinePosLastLoop[5] = LinePosLastLoop[4] 
 		LinePosLastLoop[4] = LinePosLastLoop[3] 
-		LinePosLastLoop[3] = LinePosLastLoop[2] #speichert den vor-vor-vor-vorletzten str(linePos).encode() in Array
-		LinePosLastLoop[2] = LinePosLastLoop[1] #speichert den vor-vor-vorletzten str(linePos).encode() in Array
-		LinePosLastLoop[1] = LinePosLastLoop[0] #speichert den vor-vorletzten str(linePos).encode() in Array
-		LinePosLastLoop[0] = value #speichert den vorletzten str(linePos).encode() in Array
+		LinePosLastLoop[3] = LinePosLastLoop[2]
+		LinePosLastLoop[2] = LinePosLastLoop[1]
+		LinePosLastLoop[1] = LinePosLastLoop[0]
+		LinePosLastLoop[0] = value
 		"""
 
 		LinePosLastLoop[0] = value
