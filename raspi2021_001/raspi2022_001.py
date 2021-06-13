@@ -368,10 +368,15 @@ while True:
 		linePos = 0
 		index = 0
 
-		if len(contours_rescuekit) > 0:     
+		if len(contours_rescuekit) > 0:  
+		"""   
 			ser.write(b'A') 
 			print("SEND: A")
 			delay(0.5)
+		"""
+			ser.write(b'STOP') 
+			print("SEND: STOP")
+
 
 		### Silbererkennung:
 		if len(contours_silver) > 0: #falls die Kontur breiter als 0px ist / falls er Kontur findet
