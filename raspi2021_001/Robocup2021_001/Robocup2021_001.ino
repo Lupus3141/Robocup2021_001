@@ -37,8 +37,7 @@ boolean rescueFlag = false;
 int MOTORSPEED = 100;
 int SENSITIVITY = 70;
 
-//int neunzigGrad = 840; //delay für "perfekte" 90 Grad Drehung
-float origin; // Speichert pos ab, an welcher der Roboter perfekt ausgerichtet ist
+float origin; //save absolute orientation in which the robot is aligned with the walls in the rescue area
 String readString;
 
 void setup() {
@@ -71,7 +70,7 @@ void setup() {
 		beep(1000);
 	}
 
-	//Lasersensor
+	//distance sensor
 	digitalWrite(24, HIGH);
 	laserFront.init();
 	laserFront.setTimeout(500);
@@ -83,21 +82,20 @@ void setup() {
 	bno.setExtCrystalUse(true);
 
 	servoArm.attach(23);
-	servoArm.write(30); //Arm hoch
+	servoArm.write(30); //arm up
 	delay(900);	
 	servoArm.detach();
 
 	servoString.attach(22);
-	servoString.write(180); //Seil locker machen, um Kugel aufzunehmen
+	servoString.write(180); //loosen rope
 	delay(700);
 	servoString.detach();
 }
 
 void loop() {
-	// Empfangen
 	readString = "";
 
-	while (Serial2.available()) {
+	while (Serial2.available()) { //receive data from raspi
 		delay(4);
 		if (Serial2.available() > 0) {
 			char c = Serial2.read();
@@ -140,8 +138,6 @@ void loop() {
 			drive(255, 255, 200);
 		} if (readString == "STOP") {
 			drive(255, 255, 700);
-			drive(0, 0, 0);
-			led(1, 0, 0);
 			drive(0, 0, 100000);
 		} if (readString == "gapR") {
 			drive(0, 0, 0);
@@ -153,21 +149,21 @@ void loop() {
 			beep(50);
 			drive(-255, 255, 100);
 			drive(0, 0, 0);
-		} if (readString == "Rescue") { //Teensy erhält Nachricht vom Raspi und prüft jetzt mit seinem Abstandssensor, ob dort wirklich der Rescuebereich ist
+		} if (readString == "Rescue") { //Raspi says: there is the rescue area because he did not see a line for 10 frames
 			drive(0, 0, 0);
 			led(1, 0, 1);
-			if (rescueFlag == false && distanceAvg() < 1300 && distanceAvg() > 300) { //prüft, ob Abstand des Lasersensors stimmen kann
+			if (rescueFlag == false && distanceAvg() < 1300 && distanceAvg() > 300) { //checks if distance fits
 				drive(0, 0, 0);
 				led(1, 0, 0);
-				Serial2.println(8); //sendet an den Raspi, dass dort wirklich der Rescue ist
+				Serial2.println(8); //sends a 8 to the raspi to verify the entrance of the evacuation zone
 				rescue();
 			} else {
 				drive(0, 0, 0);
 				led(0, 0, 1);
-				Serial2.println(6);
+				Serial2.println(6); //sends a 6 because there can't be the rescue area
 			}
 		} else {
-			// Linienverfolgung
+			//Linefollowing
 			int x = readString.toInt();
 
 			if (x < 200 && x > -200) {
@@ -209,35 +205,6 @@ void drive(int left, int right, int duration) {
 		left = -255;
 	}
 
-	/*if (right == 0) {
-		digitalWrite(motorB1, LOW);
-		digitalWrite(motorB2, LOW);
-		analogWrite(motorBpwm, 0);
-	}
-
-	if (left == 0) {
-		digitalWrite(motorA1, LOW);
-		digitalWrite(motorA2, LOW);
-		analogWrite(motorApwm, 0);
-	}
-
-	if (right > 0) {
-		digitalWrite(motorB1, LOW);
-		digitalWrite(motorB2, HIGH);
-	}
-	if (right < 0) {
-		digitalWrite(motorB1, HIGH);
-		digitalWrite(motorB2, LOW);
-	}
-	if (left > 0) {
-		digitalWrite(motorA1, LOW);
-		digitalWrite(motorA2, HIGH);
-	}
-	if (left < 0) {
-		digitalWrite(motorA1, HIGH);
-		digitalWrite(motorA2, LOW);
-	}*/
-
 	digitalWrite(motorA1, left < 0 ? HIGH : LOW);
 	digitalWrite(motorA2, left <= 0 ? LOW : HIGH);
 
@@ -265,27 +232,26 @@ void turnAbsolute(float pos) {
 
 void turnRelative(float deg) {
 	float startPos = getXOrientation();
-	float endPos = startPos + deg - 2; // berechne endpos, aber ziehe 2 Grad ab, weil er immer ein Stück zu weit dreht
+	float endPos = startPos + deg - 2; //calculate end pos, but substrac 2 degs because the motors usually turn a bit to long
 
+
+	//weird code follows to rotate the robot
 	if (deg >= 0.0) {
 		//p("startPos: ");
 		//p(startPos);
 		//p("endPos: ");
 		//p(endPos);
 		if (startPos >= 0.0 && startPos <=  182) {
-			//pln("drehe einfach bis Wunschpos");
 			while (getXOrientation() < endPos) {
 				drive(130, -130, 0);
 			}
 		} else {
 			if (endPos < 359.9999) {
-				//pln("drehe einfach bis Wunschpos2");
 				while (getXOrientation() < endPos) {
 					drive(130, -130, 0);
 				}
 			} else {
-				//pln("drehe bis 0 und dann bis zur Wunschpos");
-				while (getXOrientation() > 1.0) { //drehe bis 0
+				while (getXOrientation() > 1.0) {
 					drive(130, -130, 0);
 				}
 				endPos = endPos - 360.0;
@@ -298,12 +264,10 @@ void turnRelative(float deg) {
 	} else {
 		if (startPos >= 0 && startPos < 182) {
 			if (endPos >= 0.0) {
-				//pln("drehe einfach bis Wunschposition (leftherum)");
 				while (getXOrientation() > endPos) {
 					drive(-130, 130, 0);
 				}
 			} else {
-				//pln("drehe bis 0 und dann bis Wunschposition (leftherum)");
 				while (getXOrientation() < 359.0) {
 					drive(-130, 130, 0);
 				}
@@ -313,7 +277,6 @@ void turnRelative(float deg) {
 				}
 			}
 		} else {
-			//pln("drehe einfach bis Wunschposition (leftherum)");
 			while (getXOrientation() > endPos) {
 				drive(-130, 130, 0);
 			}
@@ -323,6 +286,8 @@ void turnRelative(float deg) {
 	drive(0, 0, 0);
 }
 
+
+//Symbol of programmers lazyness:
 inline void p(String txt) {
 	Serial.print(txt);
 }
@@ -331,35 +296,35 @@ inline void pln(String txt) {
 	Serial.println(txt);
 }
 
-void batteryCheck() {
+void batteryCheck() { //the battery is connected to the teensy with a voltage divitor to indicate the % with leds
 	int val = analogRead(voltageDivider);
 	if (val > 845) {
-		//voll
+		//battery full
 		led(1, 0, 0);
 	}
 
 	if (val < 845 && val > 824) {
-		//mittelvoll
+		//battery more or less full
 		led(1, 1, 0);
 	}
 
 	if (val < 824 && val > 785) {
-		//mittel
+		//battery medium
 		led(0, 1, 0);
 	}
 
 	if (val < 785 && val > 775) {
-		//mittelleer
+		//more or less empty
 		led(0, 1, 1);
 	}
 
 	if (val < 775) {
-		//leer
+		//completely empty 
 		led(0, 0, 1);
 	}
 
 	if (val < 750) {
-		//kritisch
+		//apokaliptic empty
 		drive(0, 0, 0);
 		led(0, 0, 1);
 		beep(1000000);
@@ -368,36 +333,36 @@ void batteryCheck() {
 
 void armDown() {
 	servoString.attach(22);
-	servoString.write(180); //Seil locker machen, um Kugel aufzunehmen
+	servoString.write(180); //loose rope
 	delay(700);
 	servoString.detach();
 
 	servoArm.attach(23);
-	servoArm.write(180); //Arm runter
+	servoArm.write(180); //arm down
 	delay(900);
 	servoArm.detach();
 }
 
 void armHalfDown() {
 	servoString.attach(22);
-	servoString.write(180); //Seil locker machen, um Kugel aufzunehmen
+	servoString.write(180); //loose rope
 	delay(700);
 	servoString.detach();
 
 	servoArm.attach(23);
-	servoArm.write(140); //Arm runter
+	servoArm.write(140); //arm done
 	delay(900);
 	servoArm.detach();
 }
 
 void armUp() {
 	servoString.attach(22);
-	servoString.write(0); //Seil fest machen, damit er Kugel nicht verliert
+	servoString.write(0); //tighten rope
 	delay(700);
 	servoString.detach();
 
 	servoArm.attach(23);
-	servoArm.write(30); //Arm hoch
+	servoArm.write(30); //arm up
 	delay(900);
 	servoArm.detach();
 }
@@ -475,7 +440,7 @@ void debug(bool statement) {
 
 void obstacle2() {
 	if (distance() < 50) {
-		if (distance() < 60) { //checkt, ob wirklich ein Hindernis erkannt wurde
+		if (distance() < 60) { //double check distance
 			if (distance() < 60) {
 				drive(0, 0, 0);
 				led(1, 1, 1);
@@ -497,14 +462,12 @@ void obstacle2() {
 
 void obstacle() {
 	if (distance() < 50) {
-		if (distance() < 60) { //checkt, ob wirklich ein Hindernis erkannt wurde
+		if (distance() < 60) { //double check distance
 			if (distance() < 60) {
 				drive(0, 0, 0);
 				led(1, 1, 1);
-				//Serial2.print("Dose");
 				beep(50);
 				drive(-150, -150, 200);
-				//drive(255, -255, neunzigGrad / 1.3);
 				turnRelative(70);
 				drive(255, 255, 100);
 				int x = 200;
@@ -554,6 +517,8 @@ void obstacle() {
 	}
 }
 /*
+
+//following fuction does the same as turnToOrigin, but using the laser distance sensor -> no longer used because inaccurate
 void ausrichten() {
 	bool ungerade = true;
 	int last = distanceAvg();
@@ -578,7 +543,6 @@ void ausrichten() {
 			Serial.print("  ");
 
 			if (current > last) {
-				//ist gerade
 				beep(50);
 				drive(0, 0, 0);
 				led(0, 0, 0);
@@ -679,7 +643,7 @@ void rescue() {
 				pln("");
 				*/
 				if (motorleft == 0 && motorright == 0) {
-					if (duration == 0) { //drehe dich zum Ursprung
+					if (duration == 0) { //turn to origin
 
 					} else {
 						turnRelative(duration);
@@ -711,26 +675,6 @@ String getValue(String data, char separator, int index) { //returns ints from mu
 }
 
 void led(int green, int yellow, int red) {
-	/*if (red > 1) {
-		red = 1;
-	}
-	if (red < 0) {
-		red = 0;
-	}
-
-	if (green > 1) {
-		green = 1;
-	}
-	if (green < 0) {
-		green = 0;
-	}
-
-	if (yellow > 1) {
-		yellow = 1;
-	}
-	if (yellow < 0) {
-		yellow = 0;
-	}*/
 	digitalWrite(ledGreenPin, constrain(green, 0, 1));
 	digitalWrite(ledYellowPin, constrain(yellow, 0, 1));
 	digitalWrite(ledRedPin, constrain(red, 0, 1));
