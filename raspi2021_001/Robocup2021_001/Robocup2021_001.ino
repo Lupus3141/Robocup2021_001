@@ -105,22 +105,23 @@ void loop() {
 
 	if (readString != "") {
 		Serial.println(readString);
-		if (readString == "A") {
-			drive(0, 0, 0);
-			turnRelative(10);
-			turnRelative(180);
-			drive(-155, -155, 100);
-			drive(0, 0, 0);
-			armDown();
-			armUp();
-			turnRelative(160);
-		} if (readString == "L") {
+		if (readString == "L") {
 			led(1, 0, 0);
 			drive(255, 255, 600);
 			turnRelative(-75);
 			drive(-255, -255, 200);
 			drive(255, 255, 1);
 			led(0, 0, 0);   
+		} if (readString == "A") {
+			drive(0, 0, 0);
+			beep(100);
+			turnRelative(-10);
+			turnRelative(180);
+			drive(-155, -155, 100);
+			drive(0, 0, 0);
+			armDown();
+			armUp();
+			turnRelative(-160);
 		} if (readString == "R") {
 			led(0, 0, 0);
 			drive(255, 255, 600);
@@ -137,7 +138,6 @@ void loop() {
 		} if (readString == "S") {
 			drive(255, 255, 200);
 		} if (readString == "STOP") {
-			drive(-255, 255, 250);
 			drive(255, 255, 200);
 			drive(0, 0, 100000);
 		} if (readString == "gapR") {
@@ -150,7 +150,9 @@ void loop() {
 			beep(50);
 			drive(-255, 255, 100);
 			drive(0, 0, 0);
-		} if (readString == "Rescue") { //Raspi says: there is the rescue area because he did not see a line for 10 frames
+		} if (readString == "Rescuekit") {
+			beep(2000);
+		}if (readString == "Rescue") { //Raspi says: there is the rescue area because he did not see a line for 10 frames
 			drive(0, 0, 0);
 			led(1, 0, 1);
 			if (rescueFlag == false && distanceAvg() < 1500 && distanceAvg() > 300) { //checks if distance fits
@@ -446,15 +448,15 @@ void obstacle2() {
 				drive(0, 0, 0);
 				led(1, 1, 1);
 				drive(-255, -255, 200);
-				turnRelative(50);
+				turnRelative(-50);
 				drive(255, 255, 200);
 				for (int i = 0; i < 10; i++) {
 					drive(255, 255, 110);
-					turnRelative(-5);
+					turnRelative(5);
 				}
 				drive(0, 0, 500);
 				drive(255, 255, 300);
-				turnRelative(38);
+				turnRelative(-38);
 				drive(-255, -255, 20);
 			}
 		}

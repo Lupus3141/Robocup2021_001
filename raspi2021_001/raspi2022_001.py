@@ -51,8 +51,8 @@ grn_counter = 0
 rescueCounter = 0
 rescue = False
 mindist = 300 #minRadius for victims
-
-
+redCnt = 0 #counts how often red/rk has been detected. first time -> Rescuekit second time -> STOP
+rescuekitCounter = 0
 x = 0
 y = 0
 r = 0
@@ -358,30 +358,32 @@ while True:
 		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] 
 		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 		cut_rescuekit = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
+		cut_stop = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
 		
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
 		green = cv2.inRange(cut_grn, (55, 150, 40), (80, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-		rescuekit = cv2.inRange(cut_rescuekit, (110, 200, 50), (200, 255, 150))
+		rescuekit = cv2.inRange(cut_rescuekit, (119, 100, 50), (125, 255, 255))
+		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_silver, hierarchy_silver = cv2.findContours(silber.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		contours_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		
 		linePos = 0
 		index = 0
 
-		if len(contours_rescuekit) > 0:  
-			ser.write(b'STOP') 
-			print("SEND: STOP")
-			"""   
-			ser.write(b'A') 
+		if len(contours_rescuekit) > 0:		
+			ser.write(b'A')	
 			print("SEND: A")
-			delay(0.5)
-			"""
+			
+		if len(contours_stop) > 0:
+			ser.write(b'STOP')
+			print("SEND: STOP")
 
 
 		### silverdetection:
