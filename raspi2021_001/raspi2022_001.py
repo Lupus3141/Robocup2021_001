@@ -3,24 +3,17 @@
 
 # To do:
 # 
+# Ecke und Ausgang RICHTIG finden und nicht premappen xD
+# Nach dem Finden des Rescuekits richtig ausrichten und dann erst aufnehmen
 # raspi kühler (aktiv)
-# nicht nur greifer runter und hoch, sondern auch noch Mittelding für schwarze Ecke
 # autostart von Linefollowerprogramm
 # prüfen, ob auch wirklich eine Kugel aufgenommen wurde
 # schnellere baudrate
 # raspi übertakten
 # Bei Lücke ein Stückchen in die richtige Richtung drehen (ein paar Werte, bevor weiß kam schauen, ob Linienpos rechts oder links war und dann ein Stück koriggieren)
-# Grüne Punkte besser erkennen
 # Dose umfahren und sich dabei nicht von anderen Linien irritieren lassen (neues ROI, ganz links am Kamerabild bzw. einfach alles rechts abschneiden)
-# T Platte schaffen
 # Silber erkennen verbessern
-# Rescue Kit aufnehmen können
-# Rescue Kit erkennen können (richtige Farbwerte herausfinden!!!)
-# Rescue Kit am Anfag des Rescuebereichs ablegen
 # Lebendes und totes Opfer unterscheiden
-# Kugeln einzeln suchen und zur Ecke bringen
-# Ausgang des Rescuebereichs finden 
-# Ende des Parkours erkennen
 
 from picamera.array import PiRGBArray
 from picamera import PiCamera
@@ -135,22 +128,37 @@ def sendAndWait(send): #sends command and waits for receiving the ok
 
 def findCorner(pIsWallRight):
 	if pIsWallRight == True:
-		print("suche Ecke mit Wand rechts")
-	else:
-		print("suche Ecke mit Wand links")
+		print("searching for corner with wall right")
 		sendAndWait("driveToBlackCornerAndSaveVictim")
+	else:
+		print("searching for corner with wall left")
 
 def findExit(pIsWallRight): #find green strip in the evacuation zone
+	"""
+	time.sleep(0.5)
+	print("1")
 	camera = PiCamera()
-	camera.resolution = (320, 192)
+	camera.resolution = (320, 180)
 	camera.rotation = 0
 	camera.framerate = 32
-	rawCapture = PiRGBArray(camera, size=(320, 192))
+	rawCapture = PiRGBArray(camera, size=(320, 180))
+	print("2")
+	"""
+
 	if pIsWallRight == True:
 		print("searching for exit with wall right")
+		for i in range(3):
+			drive(255, 255, 200)
+		#camera.close()
+		sendAndWait("exit")
+		return
 	else:
 		print("searching for exit with wall left")
-		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):  
+		return
+		
+		"""
+		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+			print("3")			
 			image = frame.array
 			image = image[50:270][50:192]           
 			image_rgb = image
@@ -182,10 +190,11 @@ def findExit(pIsWallRight): #find green strip in the evacuation zone
 			key = cv2.waitKey(1) & 0xFF
 			if key == ord("q"):
 				break
-
+		"""
 def rescue():
 	noVictim = 0 #counter for frames without vitim, if x frames without one -> turn a bit around
 	turnCnt = 0 #how many degrees has the robot turned
+	vicitmsSaved = 0 #how many victims have been saved?
 	fullRotationCounter = 0 
 
 	camera = PiCamera()
@@ -198,27 +207,25 @@ def rescue():
 	framesTotalRescue = 0 
 	startTimeRescue = time.time()
 
-	isWallRight = False #were is the wall in the evacuation zone?
-	drive(255, 200, 1000)
-	turnRelative(80)
+	isWallRight = True #were is the wall in the evacuation zone?
+	uselessCnt = 0
+	drive(200, 255, 1500)
+	turnRelative(-80)
 	drive(-255, -255, 500)
 	sendAndWait("setOrigin") #save absolute position to come back to it afterwards
+	drive(255, 255, 350)
+	turnRelative(90)
+	drive(255, 255, 1000)
+	turnRelative(-45)
 	drive(255, 255, 300)
 	turnRelative(-90)
-	drive(255, 255, 900)
-	turnRelative(45)
-	drive(255, 255, 650)
-	turnRelative(90)
-	drive(-255, -255, 800)  
+	drive(-255, -255, 500)  
 	armDown()
-	drive(255, 255, 20)
-	drive(-255, -255, 100)
-	drive(255, 255, 20)
-	drive(-255, -255, 100)
 	armUp()
-	drive(255, 255, 1500)
+	drive(255, 255, 1300)
 	sendAndWait("turnToOrigin")
-
+	drive(255, 255, 500)
+	
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		image = frame.array
 		image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
@@ -240,42 +247,50 @@ def rescue():
 				#print(y) #y pos of victim
 				# draw the circle in the output image, then draw a rectangle
 				cv2.circle(image, (x, y), r, (255, 255, 0), 4)
+				#victimColor = image[y, x, 0] + image[y, x, 1] + image[y, x, 2]
+				#print("Color of victim centre:", victimColor)
 				cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
 				ballPosition = x - 160
-				if ballPosition > -8 and ballPosition < 8: #Victim is horizontal aligned
+				if ballPosition > -7 and ballPosition < 7: #Victim is horizontal aligned
 					print(y)
 					if y > 120 and y < 140: #turn around and grap ball
 						turnRelative(180)
-						drive(-255, -255, 30)
+						drive(-255, -255, 10)
 						armDown()
 						armUp()
 						#turn to orogin and search for the black corner
 						sendAndWait("turnToOrigin")
-						findCorner(isWallRight)
-						turnRelative(20)
-						drive(255, 255, 550)
-						turnRelative(-10)
+						findCorner(isWallRight)	
+						drive(255, 255, 1500) #don't search at the same place as before				
+						sendAndWait("turnToOrigin")
+						turnRelative(90)
+						drive(255, 255, 2000)
+						drive(-255, -255, 80)
+						turnRelative(-70)
+						drive(255, 255, 200)
+						turnRelative(-15)
 						camera.close()
+						cv2.destroyAllWindows()
 						findExit(isWallRight)
 						return
 					elif y > 170:
-						drive(-255, -255, 30)
-					elif y > 140:
+						drive(-255, -255, 80)
+					elif y > 115:
 						drive(-255, -255, 10)
 					elif y < 90:
-						drive(255, 255, 30)
-					elif y < 120:
+						drive(255, 255, 40)
+					elif y < 140:
 						drive(255, 255, 10)
-				elif ballPosition <= -8 and ballPosition >= -25:
-					drive(-150, 150, 20)
+				elif ballPosition <= -7 and ballPosition >= -25:
+					drive(-150, 150, 30)
 				elif ballPosition <= -25:
-					drive(-255, 255, 50)
+					drive(-255, 255, 80)
 
-				elif ballPosition >= 8 and ballPosition <= 25:
-					drive(150, -150, 20)
+				elif ballPosition >= 7 and ballPosition <= 25:
+					drive(150, -150, 30)
 				elif ballPosition >= 25:
-					drive(255, -255, 50)
-			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+					drive(255, -255, 80)
+				cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
 		else:
 			noVictim = noVictim + 1 #one frame without victim -> increase counter
 			if noVictim >= 10: #No victim for 10 frames -> turn a bit
@@ -284,11 +299,16 @@ def rescue():
 						turnRelative(45)
 						turnCnt = turnCnt + 45
 					elif fullRotationCounter == 1:
-						drive(255, 255, 300)
-						turnRelative(60)
-						turnCnt = turnCnt + 60
+						drive(255, 255, 500)
+						turnRelative(70)
+						turnCnt = turnCnt + 70
 					else:
-						print("done with a 360 deg turn")
+						uselessCnt = uselessCnt + 1
+						if uselessCnt == 1:
+							turnRelative(180)
+						drive(255, 255, 500)
+						turnRelative(-70)
+						turnCnt = turnCnt + 70
 				else:
 					print("turned full 360 degs")
 					#sendAndWait("dreheZuUrsprung")
@@ -370,7 +390,7 @@ while True:
 			#cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) 
 			if rescueCounter > 2: #lower rescueCnt since there is a black contour
 				rescueCounter = rescueCounter - 3
-		"""
+		
 		if len(contours_silver) == 0: #potential silber
 			rescueCounter = rescueCounter + 1
 			if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
@@ -378,22 +398,16 @@ while True:
 				cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
 				read_serial = ser.readline().decode('ascii') 
-				if read_serial == '8\\r\\n': #yep, the distance is between 80cm and 130cm 
+				if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
 					cv2.destroyAllWindows()
 					camera.close()
 					rescue()
-
-					camera = PiCamera()
-					camera.resolution = (320, 192)
-					camera.rotation = 0
-					camera.framerate = 32
-					rawCapture = PiRGBArray(camera, size=(320, 192))
-					rawCapture.truncate(0)
+					break
 				else:
 					print("Teensy said: there can't be the evacuation zone")
 					ser.write(str(0/10).encode())
 					rescueCounter = 0
-		"""
+		
 		if(len(contours_blk) > 0):
 			nearest = 1000
 			for i in range(len(contours_blk)):

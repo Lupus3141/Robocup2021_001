@@ -153,7 +153,7 @@ void loop() {
 		} if (readString == "Rescue") { //Raspi says: there is the rescue area because he did not see a line for 10 frames
 			drive(0, 0, 0);
 			led(1, 0, 1);
-			if (rescueFlag == false && distanceAvg() < 1300 && distanceAvg() > 300) { //checks if distance fits
+			if (rescueFlag == false && distanceAvg() < 1500 && distanceAvg() > 300) { //checks if distance fits
 				drive(0, 0, 0);
 				led(1, 0, 0);
 				Serial2.println(8); //sends a 8 to the raspi to verify the entrance of the evacuation zone
@@ -592,49 +592,30 @@ void rescue() {
 				turnAbsolute(origin);
 				Serial2.println(1);
 			} else if (incomingString == "exit") {
-				rescueFlag == true;
-				drive(0, 0, 0);
+				drive(0, 0, 10);
 				Serial2.println(1);
-				drive(0, 0, 3000);
 				return;
 			} else if (incomingString == "driveToBlackCornerAndSaveVictim") {
 				turnRelative(90);
-				while (distanceAvg() > 100) {
+				while (distanceAvg() > 170) {
 					drive(255, 255, 0);
 					led(0, 0, 1);
 				}
-				drive(255, 255, 700);
-				drive(-255, -255, 500);
-				turnRelative(90);
-				while (distanceAvg() > 130) {
-					drive(255, 255, 0);
-					led(0, 0, 1);
-				}
-				drive(0, 0, 0);
 				turnRelative(90);
 				while (distanceAvg() > 400) {
 					drive(255, 255, 0);
-				}
-				drive(0, 0, 0);
-				turnRelative(45);
-				drive(255, 255, 650);
-				turnRelative(90);
-				drive(-255, -255, 500);
-				drive(0, 0, 500);
-				armHalfDown();
-				armUp();
-				drive(255, 255, 1500);
-				turnAbsolute(origin);
-				drive(255, 255, 800);
-				turnRelative(90);
-				while (distanceAvg() > 100) {
-					drive(255, 255, 0);
 					led(0, 0, 1);
 				}
-				drive(255, 255, 700);
-				drive(-255, -255, 300);
-				turnRelative(-90);
+				turnRelative(45);
+				drive(255, 255, 400);
+				turnRelative(90);
+				drive(-255, -255, 500);
 				drive(0, 0, 0);
+				armHalfDown();
+				armUp();
+				drive(255, 255, 1000);
+
+				turnAbsolute(origin);
 				Serial2.println(1);
 			} else {
 				/*
