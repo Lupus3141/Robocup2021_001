@@ -26,7 +26,7 @@ import random
 import os
 
 CUT = (50, 270, 140, 192)
-CUT_GRN = (50, 270, 80, 192)
+CUT_GRN = (50, 270, 70, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 CUT_TOP = (120, 200, 40, 110) #extra cut for skip at intersections
@@ -209,7 +209,7 @@ def rescue():
 
 	isWallRight = True #were is the wall in the evacuation zone?
 	uselessCnt = 0
-	drive(200, 255, 1500)
+	drive(200, 255, 1000)
 	turnRelative(-80)
 	drive(-255, -255, 500)
 	sendAndWait("setOrigin") #save absolute position to come back to it afterwards
@@ -254,8 +254,8 @@ def rescue():
 				if ballPosition > -7 and ballPosition < 7: #Victim is horizontal aligned
 					print(y)
 					if y > 120 and y < 140: #turn around and grap ball
+						drive(-150, -150, 30)
 						turnRelative(180)
-						drive(-255, -255, 10)
 						armDown()
 						armUp()
 						#turn to orogin and search for the black corner
@@ -339,7 +339,7 @@ while True:
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 		
-		
+		"""
 		A = 30
 		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 100:
 			cut_top = image[CUT_TOP[0]:CUT_TOP[1]][CUT_TOP[2]:CUT_TOP[3]]            
@@ -353,7 +353,7 @@ while True:
 				ser.write(b'S')
 				print("SKIP")
 				delay(0.05)
-		
+		"""
 		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]]
 		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] 
 		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
@@ -363,9 +363,9 @@ while True:
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
-		green = cv2.inRange(cut_grn, (55, 150, 40), (80, 255, 255))
+		green = cv2.inRange(cut_grn, (55, 150, 40), (90, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-		rescuekit = cv2.inRange(cut_rescuekit, (119, 100, 50), (125, 255, 255))
+		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -376,12 +376,14 @@ while True:
 		
 		linePos = 0
 		index = 0
+		#print("Len contours red:", len(contours_stop))
 
-		if len(contours_rescuekit) > 0:		
-			ser.write(b'A')	
-			print("SEND: A")
-			
-		if len(contours_stop) > 0:
+		if len(contours_rescuekit) > 0:	
+			pass	
+			#ser.write(b'A')	
+			#print("SEND: A")
+			#time.sleep(0.5)
+		if len(contours_stop) > 4:
 			ser.write(b'STOP')
 			print("SEND: STOP")
 
@@ -461,7 +463,7 @@ while True:
 							s = s + 1
 							print("S")
 					if(d): #deadend
-						#ser.write(b'D') 
+						ser.write(b'D') 
 						print("deadend") 
 						print("Send: D")
 						#delay(1)
@@ -558,26 +560,22 @@ while True:
 			value = str(linePos).encode()
 			value = int(float(value))
 
-			if value == 0: #value == 0 -> there must be a gap
+			if len(contours_blk) == 0: #no black contour
 				print("Gapcounter:", gapcounter)
 				gapcounter = gapcounter + 1
-				# if gapcounter >= 5: #5 frames without black contours: 
-				#   gapcounter = 0
-				#   print("detected gap")
-				#   if LinePosLastLoop[7] > 10: #6 frames ago, the line was on the right of the robot:
-				#       print("gapR -> turn a bit rigth to align to the line...")
-				#       delay(5)
-				#       #ser.write(b'gapR')
-				#       delay(0.05)
-				#   elif LinePosLastLoop[7] < -10: #6 frames ago, the line was on the left of the robot:
-				#       print("gapL -> turn a bit left to align to the line...")
-				#       delay(5)
-				#       #ser.write(b'gapL')
-				#       delay(0.05)
-				#   elif LinePosLastLoop[7] == 0:
-				#       print("LinePosLastLoop[7] ist leider 0")
-				#   else: #"boost" a bit straigth forward
-				#       pass
+				if gapcounter > 2:
+
+					if LinePosLastLoop[7] < -20:
+						#drehe links
+						ser.write(b'IL') #send gap, turn left
+						print("Linepos7:", LinePosLastLoop[7])
+					elif LinePosLastLoop[7] > 20:
+						#drehe rechts
+						print("Linepos7:", LinePosLastLoop[7])
+						ser.write(b'IR') #send gap, turn rigth
+					else:
+						ser.write(b'I') #send gap
+				
 			else:
 				gapcounter = 0
 				ser.write(str(linePos / 10).encode()) 
@@ -589,7 +587,6 @@ while True:
 		rawCapture.truncate(0)
 		DEBUG()
 
-		"""
 		# save last 7 positions of the line
 		LinePosLastLoop[7] = LinePosLastLoop[6]
 		LinePosLastLoop[6] = LinePosLastLoop[5] 
@@ -599,7 +596,7 @@ while True:
 		LinePosLastLoop[2] = LinePosLastLoop[1]
 		LinePosLastLoop[1] = LinePosLastLoop[0]
 		LinePosLastLoop[0] = value
-		"""
+
 
 		LinePosLastLoop[0] = value
 		for i in range(1, 8):
