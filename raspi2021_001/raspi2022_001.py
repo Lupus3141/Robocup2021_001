@@ -338,6 +338,7 @@ while True:
 
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
+
 		
 		"""
 		A = 30
@@ -363,10 +364,14 @@ while True:
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
-		green = cv2.inRange(cut_grn, (55, 150, 40), (90, 255, 255))
+		green = cv2.inRange(cut_grn, (60, 140, 48), (74, 210, 80))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
+
+		kernel = np.ones((4, 4), np.uint8)
+		green = cv2.erode(green, kernel, iterations=7)
+		green = cv2.dilate(green, kernel, iterations=11)
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -386,7 +391,6 @@ while True:
 		if len(contours_stop) > 4:
 			ser.write(b'STOP')
 			print("SEND: STOP")
-
 
 		### silverdetection:
 		if len(contours_silver) > 0: #black contour > 0 -> no silver
@@ -427,7 +431,7 @@ while True:
 			x, y, w, h = b
 			#print(w)
 			LineWidthLastLoop = w
-			if(w > 300): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
+			if(w > 280): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
 				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'S')
 				print("Send: Skipped")
@@ -440,9 +444,9 @@ while True:
 
 		contours_right = False
 		contours_left = False   
-		if(len(contours_grn) > 0):
+		if(len(contours_grn) > 0 and len(contours_grn) < 3):
 			if(grn_counter <= 0):
-				grn_counter = 4
+				grn_counter = 6
 			else:
 				if(grn_counter == 1):
 					left = 0

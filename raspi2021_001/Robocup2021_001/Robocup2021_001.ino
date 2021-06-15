@@ -34,9 +34,10 @@ int voltageDivider = A2;
 
 int xy = 0;
 boolean rescueFlag = false;
-int MOTORSPEED = 100;
-int SENSITIVITY = 70;
+int MOTORSPEED = 70;
+int SENSITIVITY = 60;
 
+int obstacleCnt = 0;
 float origin; //save absolute orientation in which the robot is aligned with the walls in the rescue area
 String readString;
 
@@ -81,6 +82,11 @@ void setup() {
 	laserFront.startContinuous();
 	bno.setExtCrystalUse(true);
 
+	/*
+	while (distanceAvg() > 50) {
+		delay(1);
+	}
+	*/
 	servoArm.attach(23);
 	servoArm.write(30); //arm up
 	delay(900);	
@@ -90,7 +96,8 @@ void setup() {
 	servoString.write(180); //loosen rope
 	delay(700);
 	servoString.detach();
-	drive(130, 130, 650);
+	drive(130, 130, 800);
+
 }
 
 void loop() {
@@ -196,15 +203,31 @@ void loop() {
 					drive(motorSpeedL * 0.5, motorSpeedR * 0.5, 0);
 				} else {
 					Serial.println(x);
-					if (x < -6.0 || x > 6.0) {
+					if (x < -4.0 || x > 4.0) {
+						drive(motorSpeedL, motorSpeedR, 60);
+						//drive(-255, -255, 5);
+					} else if (x < -3.0 || x > 3.0) {
 						drive(motorSpeedL, motorSpeedR, 30);
-						drive(-255, -255, 15);
+						//drive(-255, -255, 5);
 					} else {
 						drive(motorSpeedL, motorSpeedR, 0);
 					}
 				}
 			}
-			obstacle2();
+			obstacle2();			
+			if (obstacleCnt == 1) {
+				drive(140, 140, 400);
+				drive(150, 80, 300);
+				drive(150, 150, 200);
+				drive(255, -255, 800);
+				drive(150, 150, 150);
+				drive(255, -255, 200);
+				drive(130, 255, 200);				
+				drive(255, -255, 100);
+				drive(150, 150, 350);
+				obstacleCnt++;
+			}
+
 		}
 	}
 }
@@ -475,8 +498,8 @@ void obstacle2() {
 				drive(-255, -255, 200);
 				turnRelative(-50);
 				drive(255, 255, 200);
-				for (int i = 0; i < 11; i++) {
-					drive(255, 255, 100);
+				for (int i = 0; i < 12; i++) {
+					drive(255, 255, 80);
 					turnRelative(10);
 				}
 				drive(0, 0, 500);
@@ -484,6 +507,7 @@ void obstacle2() {
 				turnRelative(-38);
 				drive(-255, -255, 200);
 				drive(0, 0, 0);
+				obstacleCnt++;
 			}
 		}
 	}
