@@ -132,7 +132,13 @@ void loop() {
 			armUp();
 			turnRelative(180);
 			turnRelative(20);
-		} if (readString == "I") {
+		} if (readString.indexOf("E") != -1) {
+			drive(0, 0, 0);
+			beep(100);
+			turnRelative(-70);
+			drive(150, 150, 200);
+			drive(0, 0, 0);
+		}if (readString == "I") {
 			drive(255, 255, 550);
 		} if (readString == "IR") {
 			drive(0, 0, 0);
@@ -157,12 +163,12 @@ void loop() {
 			turnRelative(180);      
 			drive(-255, -255, 500);
 			drive(255, 255, 1);
-		} if (readString == "S") {
-			drive(255, 255, 200);
-		} if (readString == "STOP") {
+		} if (readString.indexOf("STOP") != -1) {
 			drive(255, 255, 200);
 			servoString.write(180); //loose rope
 			drive(0, 0, 100000);
+		} else if (readString.indexOf("S") != -1) {
+			drive(255, 255, 200);
 		} if (readString == "gapR") {
 			drive(0, 0, 0);
 			beep(50);

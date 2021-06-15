@@ -366,7 +366,7 @@ while True:
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
-		green = cv2.inRange(cut_grn, (60, 140, 48), (74, 210, 80))
+		green = cv2.inRange(cut_grn, (55, 50, 30), (78, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
@@ -390,9 +390,12 @@ while True:
 			#ser.write(b'A')	
 			#print("SEND: A")
 			#time.sleep(0.5)
-		if len(contours_stop) > 4:
-			ser.write(b'STOP')
-			print("SEND: STOP")
+		if len(contours_stop) > 0:
+			b = cv2.boundingRect(contours_stop[0])
+			x, y, w, h = b
+			if(w * h > 800):
+				ser.write(b'STOP')
+				print("SEND: STOP")
 
 		### silverdetection:
 		if len(contours_silver) > 0: #black contour > 0 -> no silver
@@ -442,22 +445,26 @@ while True:
 			if not (a1 == nearest):
 				a1, a2 = a2, a1
 
-			if(abs(lastA2 - a1) < abs(a2 - a1)): # Zweite Kontur nähert sich der ersten an
+			if (abs(lastA2 - a1) > abs(a2 - a1)): # Zweite Kontur nähert sich der ersten an
 				pCounter = pCounter + 1
-				if(pCounter > 4):
-					# Ecke erkannt
-			else:
-				pCounter = 0
+
+				if(pCounter > 10) and (abs(a2 - a1) < 40):
+					print("Ecke erkannt")
+					pCounter = 0
+					ser.write(b'\nE\n')
+			# else:
+			# 	pCounter = 0
 
 			lastA2 = a2
-
+			print(pCounter)
+			#pCounter = pCounter - 1
 			b = cv2.boundingRect(contours_blk[index])
 			x, y, w, h = b
 			#print(w)
 			LineWidthLastLoop = w
 			if(w > 280): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
 				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-				ser.write(b'S')
+				ser.write(b'\nS\n')
 				print("Send: Skipped")
 
 			linePos = int(x + w / 2 - 160)
