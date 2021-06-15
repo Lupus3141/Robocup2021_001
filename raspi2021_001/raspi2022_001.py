@@ -43,6 +43,8 @@ startTime = time.time() #for FPS calculation at the end of the program
 timeWaitet = 0 #because a normal time.sleep in the loop would distort the FPS calculation, the program counts how long has been waited and subtracs it in the final calculation 
 lastLinePos = 0 #were was the line in the last frame?
 LinePosLastLoop = [0, 0, 0, 0, 0, 0, 0, 0]
+lastA2 = 0
+pCounter = 0
 LineWidthLastLoop = 0
 value = 0
 gapcounter = 0 #gets increased if no line could be found in a frame
@@ -418,14 +420,36 @@ while True:
 		
 		if(len(contours_blk) > 0):
 			nearest = 1000
+			a1 = 0
+			a2 = 0
 			for i in range(len(contours_blk)):
 				b = cv2.boundingRect(contours_blk[i])
 				x, y, w, h = b
 				a = int(abs(x + w / 2 - 160 - lastLinePos))
+				if(len(contours_blk) == 2):
+					if(a1 == 0):
+						a1 = a
+					else:
+						a2 = a
+				else:
+					pCounter = 0
+
 				cv2.rectangle(image_rgb, (x, y + CUT[2] + CUT[0]), (x + w, y + h + CUT[2] + CUT[0]), (0, 106, 255), 2) #rechteck um schwarze Konturen
 				if(a < nearest):
 					nearest = a
 					index = i
+
+			if not (a1 == nearest):
+				a1, a2 = a2, a1
+
+			if(abs(lastA2 - a1) < abs(a2 - a1)): # Zweite Kontur nähert sich der ersten an
+				pCounter = pCounter + 1
+				if(pCounter > 4):
+					# Ecke erkannt
+			else:
+				pCounter = 0
+
+			lastA2 = a2
 
 			b = cv2.boundingRect(contours_blk[index])
 			x, y, w, h = b
