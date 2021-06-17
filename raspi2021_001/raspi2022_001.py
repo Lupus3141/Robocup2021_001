@@ -366,7 +366,11 @@ while True:
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
+<<<<<<< Updated upstream
 		green = cv2.inRange(cut_grn, (55, 50, 30), (78, 255, 255))
+=======
+		green = cv2.inRange(cut_grn, (50, 60, 48), (70, 210, 200))
+>>>>>>> Stashed changes
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
