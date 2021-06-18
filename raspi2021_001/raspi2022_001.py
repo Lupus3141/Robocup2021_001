@@ -30,7 +30,6 @@ CUT_GRN = (50, 270, 70, 192)
 CUT_SILVER = (0, 100, 0, 180)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 CUT_TOP = (120, 200, 40, 110) #extra cut for skip at intersections
-
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) #establish serial connenction 
 
 while(not ser.is_open):
@@ -287,6 +286,7 @@ def rescue():
 					drive(-150, 150, 30)
 				elif ballPosition <= -25:
 					drive(-255, 255, 80)
+				#drive(-150, 150, ballPosition * -0.5)
 
 				elif ballPosition >= 7 and ballPosition <= 25:
 					drive(150, -150, 30)
@@ -342,7 +342,6 @@ while True:
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 
 		
-		"""
 		A = 30
 		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 100:
 			cut_top = image[CUT_TOP[0]:CUT_TOP[1]][CUT_TOP[2]:CUT_TOP[3]]            
@@ -355,22 +354,16 @@ while True:
 			if(len(contours_top) > 0):
 				ser.write(b'S')
 				print("SKIP")
-				delay(0.05)
-		"""
+				delay(0.05)		
 		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]]
 		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] 
 		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
 		cut_rescuekit = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
 		cut_stop = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
-		
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
-<<<<<<< Updated upstream
-		green = cv2.inRange(cut_grn, (55, 50, 30), (78, 255, 255))
-=======
 		green = cv2.inRange(cut_grn, (50, 60, 48), (70, 210, 200))
->>>>>>> Stashed changes
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
@@ -466,7 +459,7 @@ while True:
 			x, y, w, h = b
 			#print(w)
 			LineWidthLastLoop = w
-			if(w > 280): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
+			if(w > 210): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
 				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 				ser.write(b'\nS\n')
 				print("Send: Skipped")

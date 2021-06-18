@@ -96,7 +96,6 @@ void setup() {
 	servoString.write(180); //loosen rope
 	delay(700);
 	servoString.detach();
-	drive(130, 130, 800);
 
 }
 
@@ -220,22 +219,9 @@ void loop() {
 					}
 				}
 			}
-			obstacle2();			
-			if (obstacleCnt == 1) {
-				drive(140, 140, 400);
-				drive(150, 80, 300);
-				drive(150, 150, 200);
-				drive(255, -255, 800);
-				drive(150, 150, 150);
-				drive(255, -255, 200);
-				drive(130, 255, 200);				
-				drive(255, -255, 100);
-				drive(150, 150, 350);
-				obstacleCnt++;
-			}
-
 		}
 	}
+	obstacle3();
 }
 
 void beep(int duration) {
@@ -517,6 +503,43 @@ void obstacle2() {
 			}
 		}
 	}
+}
+
+void obstacle3() {
+	if (distance() < 50) {
+		if (distance() < 60) { //double check distance
+			if (distance() < 60) {
+				drive(0, 0, 0);
+				led(1, 1, 1);
+				drive(-255, -255, 150);
+				turnRelative(-50);
+				drive(255, 255, 200);
+				boolean flag = true; 
+				while (flag) {
+					drive(200, 200, 100);
+					turnRelative(10);
+					delay(4);
+					while (Serial2.available() > 0) {
+						char c = Serial2.read();
+						readString += c;
+					}
+
+					int x = readString.toInt();
+					Serial.println(x);
+					if (x != 0 && abs(x + 2) < 3) {
+						//Linie gefunden
+						drive(0, 0, 0);
+						beep(1000);
+						drive(255, 255, 400);
+						turnRelative(-50);
+						drive(-255, -255, 200);
+						return;
+					}
+					readString = "";
+				}
+			}
+		}
+	}	
 }
 
 void obstacle() {

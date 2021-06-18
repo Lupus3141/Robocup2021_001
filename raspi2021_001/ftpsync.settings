@@ -4,7 +4,9 @@
 
 	"default": {
 
-		"host": "192.168.0.61",
+		//"host": "192.168.0.61",
+		"host": "10.31.217.234",
+		
 		"username": "pi",  // or null for anonymous login
 		"password": "Freewin",
 		"path": "/home/pi/Desktop",
