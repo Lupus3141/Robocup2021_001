@@ -25,12 +25,14 @@ import serial
 import random
 import os
 
-CUT = (50, 270, 140, 192)
-CUT_GRN = (50, 270, 70, 192)
-CUT_SILVER = (0, 100, 0, 180)
+CUT = (0, 320, 140, 192)
+CUT_GRN = (50, 270, 50, 192)
+CUT_SILVER = (60, 280, 0, 120)
 CUT_RESCUEKIT = (50, 270, 120, 170)
-CUT_TOP = (120, 200, 40, 110) #extra cut for skip at intersections
-ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 2) #establish serial connenction 
+CUT_TOP = (120, 200, 60, 120) #extra cut for skip at intersections
+CUT_OBSTACLE = (60, 300, 140, 192)
+
+ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #establish serial connenction 
 
 while(not ser.is_open):
 	print("Waiting for Serial...")
@@ -57,6 +59,7 @@ rescuekitCounter = 0
 x = 0
 y = 0
 r = 0
+obstacle = False
 
 ########## FUNCTIONS ##########
 
@@ -64,9 +67,10 @@ def DEBUG():
 	cv2.imshow("image_rgb", image_rgb)
 	cv2.imshow("image_hsv", image)
 	cv2.imshow("cut", cut)
-	cv2.imshow("cut_green", cut_grn)
-	#cv2.imshow("cut_silber", cut_silver)
+	cv2.imshow("cut_green", green)
+	cv2.imshow("cut_silber", cut_silver)
 	cv2.imshow("rescuekit", rescuekit)
+
 	#cv2.imshow("Konturen gruen", green)
 	cv2.setMouseCallback("mouseRGB", mouseRGB)
 	cv2.imshow("mouseRGB", image_rgb)
@@ -127,10 +131,39 @@ def sendAndWait(send): #sends command and waits for receiving the ok
 		if readData == "1":
 			break
 
+def toCornerUnload():
+	camera = PiCamera()
+	camera.resolution = (320, 180) 
+	camera.rotation = 0
+	camera.framerate = 32
+	rawCapture = PiRGBArray(camera, size=(320, 180))
+
+	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+		image = frame.array
+		image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
+
+		black = cv2.inRange(image, (0, 0, 0), (255, 255, 75))
+		if(cv2.countNonZero(black) > 5000):
+			sendAndWait("C")
+		
+
+		cv2.imshow("Corner out", image)
+		rawCapture.truncate(0)
+		key = cv2.waitKey(1) & 0xFF
+		framesTotalRescue = framesTotalRescue + 1
+		if key == ord("q"):
+			print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
+			camera.close()
+			break
+
 def findCorner(pIsWallRight):
 	if pIsWallRight == True:
 		print("searching for corner with wall right")
-		sendAndWait("driveToBlackCornerAndSaveVictim")
+		sendAndWait("turnToOrigin")
+		ser.write(b'driveToWall')
+		turnRelative(90)
+
+
 	else:
 		print("searching for corner with wall left")
 
@@ -145,7 +178,11 @@ def findExit(pIsWallRight): #find green strip in the evacuation zone
 	rawCapture = PiRGBArray(camera, size=(320, 180))
 	print("2")
 	"""
-
+	# Ausgang
+	drive(-255, -255, 500)
+	turnRelative(-90)
+	drive(200, 200, 200)
+"""
 	if pIsWallRight == True:
 		print("searching for exit with wall right")
 		for i in range(3):
@@ -156,8 +193,8 @@ def findExit(pIsWallRight): #find green strip in the evacuation zone
 	else:
 		print("searching for exit with wall left")
 		return
-		
-		"""
+"""
+"""
 		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 			print("3")			
 			image = frame.array
@@ -210,22 +247,22 @@ def rescue():
 
 	isWallRight = True #were is the wall in the evacuation zone?
 	uselessCnt = 0
-	drive(200, 255, 1000)
-	turnRelative(-80)
+	drive(255, 220, 2000)
+	turnRelative(80)
 	drive(-255, -255, 500)
 	sendAndWait("setOrigin") #save absolute position to come back to it afterwards
-	drive(255, 255, 350)
-	turnRelative(90)
-	drive(255, 255, 1000)
-	turnRelative(-45)
+	drive(255, 255, 1500)
+	"""
+	turnRelative(45)
 	drive(255, 255, 300)
-	turnRelative(-90)
+	turnRelative(90)
 	drive(-255, -255, 500)  
 	armDown()
 	armUp()
 	drive(255, 255, 1300)
 	sendAndWait("turnToOrigin")
 	drive(255, 255, 500)
+	"""
 	
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		image = frame.array
@@ -261,7 +298,7 @@ def rescue():
 						armUp()
 						#turn to orogin and search for the black corner
 						sendAndWait("turnToOrigin")
-						findCorner(isWallRight)	
+						"""findCorner(isWallRight)	
 						drive(255, 255, 1500) #don't search at the same place as before				
 						sendAndWait("turnToOrigin")
 						turnRelative(90)
@@ -272,7 +309,9 @@ def rescue():
 						turnRelative(-15)
 						camera.close()
 						cv2.destroyAllWindows()
-						findExit(isWallRight)
+						findExit(isWallRight)"""
+						findCorner(isWallRight)
+						findExit()
 						return
 					elif y > 170:
 						drive(-255, -255, 80)
@@ -325,7 +364,9 @@ def rescue():
 			print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
 			camera.close()
 			break
+
 	print("Rescue Program stopped")
+
 ##############################################################################################
 while True:
 	camera = PiCamera()
@@ -335,6 +376,16 @@ while True:
 	rawCapture = PiRGBArray(camera, size=(320, 192))
 
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+		#if(ser.in_waiting != 0):
+		#	s2 = ser.readline()
+		#	print("TEENSY_DEBUG: " + str(s2))
+
+		if(ser.in_waiting != 0):
+			s = str(ser.readline())
+			print("TEENSY SAID: " + s)
+			if("O" in s):
+				obstacle = True
+
 		image = frame.array
 		image_rgb = image 
 
@@ -343,8 +394,8 @@ while True:
 
 		
 		A = 30
-		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 100:
-			cut_top = image[CUT_TOP[0]:CUT_TOP[1]][CUT_TOP[2]:CUT_TOP[3]]            
+		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 160:
+			cut_top = image[CUT_TOP[2]:CUT_TOP[3],CUT_TOP[0]:CUT_TOP[1]]            
 			cv2.imshow("cut_top", cut_top)
 			#cv2.GaussianBlur(cut_top, ((9, 9)), 2, 2)
 
@@ -354,34 +405,43 @@ while True:
 			if(len(contours_top) > 0):
 				ser.write(b'S')
 				print("SKIP")
-				delay(0.05)		
-		cut = image[CUT[0]:CUT[1]][CUT[2]:CUT[3]]
-		cut_grn = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]] 
-		cut_silver = image[CUT_SILVER[0]:CUT_SILVER[1]][CUT_SILVER[2]:CUT_SILVER[3]]
-		cut_rescuekit = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
-		cut_stop = image[CUT_GRN[0]:CUT_GRN[1]][CUT_GRN[2]:CUT_GRN[3]]
+				delay(0.4)		
+		cut = image[CUT[2]:CUT[3],CUT[0]:CUT[1]]
+		cut_grn = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]] 
+		cut_silver = image[CUT_SILVER[2]:CUT_SILVER[3],CUT_SILVER[0]:CUT_SILVER[1]]
+		cut_rescuekit = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
+		cut_stop = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
+		#cut_obstacle = image[CUT_OBSTACLE[0]:CUT_OBSTACLE[1],CUT_OBSTACLE[2]:CUT_OBSTACLE[3]]
+
 		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
-		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75)) 
-		green = cv2.inRange(cut_grn, (50, 60, 48), (70, 210, 200))
+		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75))
+		green = cv2.inRange(cut_grn, (52, 60, 48), (75, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
+		#obstacle = cv2.inRange(cut_obstacle, (0, 0, 0), (255, 255, 48))
+
 
 		kernel = np.ones((4, 4), np.uint8)
-		green = cv2.erode(green, kernel, iterations=7)
-		green = cv2.dilate(green, kernel, iterations=11)
+		green = cv2.erode(green, kernel, iterations=3)
+		green = cv2.dilate(green, kernel, iterations=5)
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_silver, hierarchy_silver = cv2.findContours(silber.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		contours_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		#contours_obstacle, hierarchy_obstacle = cv2.findContours(obstacle.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+		#cv2.imshow("Obstacle", obstacle)
+
 		
 		linePos = 0
 		index = 0
 		#print("Len contours red:", len(contours_stop))
 
+		#if len(contours_obstacle) > 0:	
 		if len(contours_rescuekit) > 0:	
 			pass	
 			#ser.write(b'A')	
@@ -419,6 +479,23 @@ while True:
 					rescueCounter = 0
 		
 		if(len(contours_blk) > 0):
+			if(len(contours_blk) > 4):
+				if(len(contours_silver) == 0):
+					print("detected silver")
+					cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+					ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
+					
+					read_serial = ser.readline().decode('ascii') 
+					if "8" in read_serial: #yep, the distance is between 80cm and 130cm 
+						cv2.destroyAllWindows()
+						camera.close()
+						rescue()
+						break
+					else:
+						print("Teensy said: there can't be the evacuation zone")
+						ser.write(str(0/10).encode())
+						rescueCounter = 0
+
 			nearest = 1000
 			a1 = 0
 			a2 = 0
@@ -453,16 +530,17 @@ while True:
 			# 	pCounter = 0
 
 			lastA2 = a2
-			print(pCounter)
+			#print(pCounter)
 			#pCounter = pCounter - 1
 			b = cv2.boundingRect(contours_blk[index])
 			x, y, w, h = b
 			#print(w)
 			LineWidthLastLoop = w
 			if(w > 210): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
-				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-				ser.write(b'\nS\n')
-				print("Send: Skipped")
+				pass
+				#cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+				#ser.write(b'\nS\n')
+				#print("Send: Skipped")
 
 			linePos = int(x + w / 2 - 160)
 			cv2.putText(image_rgb, str(linePos),(linePos + 140, 70), cv2.FONT_HERSHEY_DUPLEX, 2, (0, 106, 255), 2)
@@ -470,11 +548,17 @@ while True:
 			#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 			lastLinePos = linePos
 
+			if(obstacle and abs(linePos - 20) < 30):
+				print("OBSTACLE")
+				obstacle = False
+				ser.write(b'\nO\n')
+				cv2.putText(image_rgb, "Obstacle end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+
 		contours_right = False
 		contours_left = False   
 		if(len(contours_grn) > 0 and len(contours_grn) < 3):
 			if(grn_counter <= 0):
-				grn_counter = 6
+				grn_counter = 2
 			else:
 				if(grn_counter == 1):
 					left = 0
@@ -507,11 +591,11 @@ while True:
 						if(left > right):
 							ser.write(b'L')
 							print("Send: L")
-							#delay(0.5)
+							delay(0.5)
 						elif(right > left):
 							ser.write(b'R')
 							print("Send: R")
-							#delay(0.5)
+							delay(0.5)
 					grn_counter = 0
 					grn_list.clear()
 					#print("List cleared!")
@@ -530,7 +614,7 @@ while True:
 					b = cv2.boundingRect(contours_grn[i])
 					x, y, w, h = b
 					cv2.rectangle(image_rgb, (x, y + CUT_GRN[2] + CUT_GRN[0]), (x + w, y + h + CUT_GRN[2] + CUT_GRN[0]), (0, 255, 0), 3) #rectangle around green contours
-					a = x + w / 2 - 160
+					a = x + w / 2 - 160 + CUT_GRN[0]
 					if(a < linePos):
 						contours_left = True
 					elif(a > linePos):
@@ -596,17 +680,17 @@ while True:
 				print("Gapcounter:", gapcounter)
 				gapcounter = gapcounter + 1
 				if gapcounter > 2:
-
 					if LinePosLastLoop[7] < -20:
 						#drehe links
-						ser.write(b'IL') #send gap, turn left
+						#ser.write(b'IL') #send gap, turn left
 						print("Linepos7:", LinePosLastLoop[7])
 					elif LinePosLastLoop[7] > 20:
 						#drehe rechts
 						print("Linepos7:", LinePosLastLoop[7])
-						ser.write(b'IR') #send gap, turn rigth
+						#ser.write(b'IR') #send gap, turn rigth
 					else:
-						ser.write(b'I') #send gap
+						pass
+						#ser.write(b'I') #send gap
 				
 			else:
 				gapcounter = 0

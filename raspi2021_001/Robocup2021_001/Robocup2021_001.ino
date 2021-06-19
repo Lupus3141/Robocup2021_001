@@ -97,6 +97,8 @@ void setup() {
 	delay(700);
 	servoString.detach();
 
+	//while(distanceAvg() > 100) {}
+
 }
 
 void loop() {
@@ -114,7 +116,7 @@ void loop() {
 		Serial.println(readString);
 		if (readString == "L") {
 			led(1, 0, 0);
-			drive(255, 255, 600);
+			drive(255, 255, 800);
 			turnRelative(-75);
 			drive(-255, -255, 250);
 			drive(255, 255, 1);
@@ -151,7 +153,7 @@ void loop() {
 			drive(255, 255, 550);
 		} if (readString == "R") {
 			led(0, 0, 0);
-			drive(255, 255, 600);
+			drive(255, 255, 800);
 			turnRelative(75);
 			drive(-255, -255, 250);
 			drive(255, 255, 1);
@@ -167,7 +169,7 @@ void loop() {
 			servoString.write(180); //loose rope
 			drive(0, 0, 100000);
 		} else if (readString.indexOf("S") != -1) {
-			drive(255, 255, 200);
+			drive(255, 255, 400);
 		} if (readString == "gapR") {
 			drive(0, 0, 0);
 			beep(50);
@@ -183,10 +185,10 @@ void loop() {
 		}if (readString == "Rescue") { //Raspi says: there is the rescue area because he did not see a line for 10 frames
 			drive(0, 0, 0);
 			led(1, 0, 1);
-			if (rescueFlag == false && distanceAvg() < 2000 && distanceAvg() > 0) { //checks if distance fits
+			if (rescueFlag == false && distanceAvg() < 2000 && distanceAvg() > 500) { //checks if distance fits
 				drive(0, 0, 0);
 				led(1, 0, 0);
-				Serial2.println(8); //sends a 8 to the raspi to verify the entrance of the evacuation zone
+				Serial2.println("8"); //sends a 8 to the raspi to verify the entrance of the evacuation zone
 				rescue();
 			} else {
 				drive(0, 0, 0);
@@ -194,8 +196,18 @@ void loop() {
 				Serial2.println(6); //sends a 6 because there can't be the rescue area
 			}
 		} else {
+			String newReadString = "";
+			for(int i = 0; i < readString.length(); i++) {
+				char c = readString[i];
+				if(c == '-' || c == '.' || c == '0' || c == '1' || 
+					c == '2' || c == '3' || c == '4' || c == '5' ||
+					c == '6' || c == '7' || c == '8' || c == '9') {
+					newReadString += c;
+				}
+			}
+
 			//Linefollowing
-			int x = readString.toInt();
+			int x = newReadString.toInt();
 
 			if (x < 200 && x > -200) {
 
@@ -207,21 +219,13 @@ void loop() {
 				} else if (getYOrientation() < -15.00) {
 					drive(motorSpeedL * 0.5, motorSpeedR * 0.5, 0);
 				} else {
-					Serial.println(x);
-					if (x < -4.0 || x > 4.0) {
-						drive(motorSpeedL, motorSpeedR, 60);
-						//drive(-255, -255, 5);
-					} else if (x < -3.0 || x > 3.0) {
-						drive(motorSpeedL, motorSpeedR, 30);
-						//drive(-255, -255, 5);
-					} else {
-						drive(motorSpeedL, motorSpeedR, 0);
-					}
+					drive(motorSpeedL, motorSpeedR, 0);					
 				}
 			}
 		}
 	}
 	obstacle3();
+	//obstacle();
 }
 
 void beep(int duration) {
@@ -514,28 +518,28 @@ void obstacle3() {
 				drive(-255, -255, 150);
 				turnRelative(-50);
 				drive(255, 255, 200);
-				boolean flag = true; 
-				while (flag) {
-					drive(200, 200, 100);
+				Serial2.println("OO");
+				while (1) {
+					drive(255, 255, 80);
 					turnRelative(10);
-					delay(4);
+					drive(0, 0, 0);
+					readString = "";
 					while (Serial2.available() > 0) {
+						//delay(4);
 						char c = Serial2.read();
 						readString += c;
 					}
 
-					int x = readString.toInt();
-					Serial.println(x);
-					if (x != 0 && abs(x + 2) < 3) {
+					if (readString.indexOf("O") != -1) {
 						//Linie gefunden
 						drive(0, 0, 0);
 						beep(1000);
-						drive(255, 255, 400);
+						drive(255, 255, 550);
 						turnRelative(-50);
 						drive(-255, -255, 200);
+						Serial2.println("Found Line");
 						return;
 					}
-					readString = "";
 				}
 			}
 		}
@@ -549,9 +553,9 @@ void obstacle() {
 				drive(0, 0, 0);
 				led(1, 1, 1);
 				beep(50);
-				drive(-150, -150, 200);
-				turnRelative(70);
-				drive(255, 255, 100);
+				drive(-150, -150, 120);
+				turnRelative(-55);
+				drive(255, 255, 50);
 				int x = 200;
 				Serial2.flush();
 				beep(50);
@@ -570,6 +574,9 @@ void obstacle() {
 				while (abs(x) == 0 || abs(x) > 3) {
 					readString = "";
 
+					Serial2.flush();
+					delay(5);
+
 					while (Serial2.available()) {
 						delay(4);
 						if (Serial2.available() > 0) {
@@ -583,14 +590,16 @@ void obstacle() {
 					} else {
 						x = 0;
 					}
-					drive(30, 255, 0);
+					//drive(255, 30, 0);
+					turnRelative(15);
+					drive(150, 255, 10);
 					a = -a;
-					delay(20);
 				}
 				led(0, 1, 0);
 				drive(255, 255, 300);
-				drive(255, -255, 500);
-				drive(255, 255, 100);
+				//drive(-255, 255, 500);
+				turnRelative(-50);
+				drive(-255, -255, 200);
 				drive(0, 0, 0);
 				beep(50);
 			}
@@ -672,6 +681,23 @@ void rescue() {
 			} else if (incomingString == "turnToOrigin") {
 				turnAbsolute(origin);
 				Serial2.println(1);
+			} else if(incomingString == "driveToWall") {
+				drive(255, 255, 0);
+				while(distanceAvg() > 100) {
+					if (Serial2.available() > 0) {
+						String incomingString = Serial2.readString();
+
+						if(incomingString == "C") {
+							break;
+						}
+						led(0, 1, 0);
+					}
+				}
+
+				drive(0, 0, 0);
+				delay(100);
+				Serial2.println(1);
+				beep(500);
 			} else if (incomingString == "exit") {
 				drive(0, 0, 10);
 				Serial2.println(1);
