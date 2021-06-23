@@ -454,7 +454,7 @@ while True:
 				ser.write(b'STOP')
 				print("SEND: STOP")
 
-		### silverdetection:
+		### silverdetection: 
 		if len(contours_silver) > 0: #black contour > 0 -> no silver
 			x_silber, y_silber, w_silber, h_silber = cv2.boundingRect(contours_silver[0]) #make rectangle around contour
 			#cv2.rectangle(image_rgb, (x_silber, y_silber), (x_silber + w_silber, y_silber + h_silber), (189, 189, 189), 3) 
