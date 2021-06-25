@@ -131,6 +131,13 @@ def sendAndWait(send): #sends command and waits for receiving the ok
 		if readData == "1":
 			break
 
+def distance():
+	ser.write(b"dist")
+	while True:
+		readData = ser.readline().decode('ascii').rstrip()
+		if readData != "":
+			return int()
+
 def toCornerUnload():
 	camera = PiCamera()
 	camera.resolution = (320, 180) 
@@ -375,6 +382,8 @@ while True:
 	camera.framerate = 32
 	rawCapture = PiRGBArray(camera, size=(320, 192))
 
+	turningGreen = 0
+
 	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
 		#if(ser.in_waiting != 0):
 		#	s2 = ser.readline()
@@ -385,6 +394,7 @@ while True:
 			print("TEENSY SAID: " + s)
 			if("O" in s):
 				obstacle = True
+				print("OBSTACLE")
 
 		image = frame.array
 		image_rgb = image 
@@ -413,7 +423,7 @@ while True:
 		cut_stop = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
 		#cut_obstacle = image[CUT_OBSTACLE[0]:CUT_OBSTACLE[1],CUT_OBSTACLE[2]:CUT_OBSTACLE[3]]
 
-		cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
+		#cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75))
 		green = cv2.inRange(cut_grn, (52, 60, 48), (75, 255, 255))
@@ -442,11 +452,50 @@ while True:
 		#print("Len contours red:", len(contours_stop))
 
 		#if len(contours_obstacle) > 0:	
-		if len(contours_rescuekit) > 0:	
-			pass	
-			#ser.write(b'A')	
-			#print("SEND: A")
-			#time.sleep(0.5)
+		if len(contours_rescuekit) > 0:			
+			ser.write(b'RK') #send rescue kit
+			delay(1)
+			while len(contours_rescuekit) > 0:
+				rcapture = PiRGBArray(camera)
+				camera.capture(rcapture, format="bgr")
+				image = rcapture.array
+				image_rgb = image
+
+				image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+				image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
+
+				rescuekit = cv2.inRange(image, (100, 150, 25), (145, 255, 255))
+
+				kernel = np.ones((4, 4), np.uint8)
+				rescuekit = cv2.erode(rescuekit, kernel, iterations=3)
+				rescuekit = cv2.dilate(rescuekit, kernel, iterations=5)
+				contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+				b = cv2.boundingRect(contours_rescuekit[0])
+				x, y, w, h = b
+				pos = x + w / 2 - 160
+
+				cv2.rectangle(image_rgb, (x, y), (x + w, y + h), (50, 50, 200), 2)
+				cv2.putText(image_rgb, str(pos), (x, y + h + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 50, 200), 2, cv2.LINE_AA)
+
+				cv2.imshow("image_rgb", image_rgb)
+
+				if(y < 120):
+					drive(180, 180, (130 - y) * 1.5)
+				if(y > 150):
+					drive(-130, -130, 30)
+				if(abs(pos) > 10):
+					turnRelative(pos / 4)
+				if(155 > y > 115 and abs(pos) <= 10):
+					ser.write(b'grabRescueKit')
+					delay(6)
+					break
+					# drive(-200, -200, 50)
+					# turnRelative(180)
+					# drive(-200, -200, 85)
+					# armDown()
+					# armUp()
+
 		if len(contours_stop) > 0:
 			b = cv2.boundingRect(contours_stop[0])
 			x, y, w, h = b
@@ -548,11 +597,22 @@ while True:
 			#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 			lastLinePos = linePos
 
-			if(obstacle and abs(linePos - 20) < 30):
+			tg = False
+			if(turningGreen == 1):
+				tg = abs(linePos + 10) < 30
+			elif(turningGreen == 2):
+				tg = abs(linePos - 10) < 30
+
+			if(obstacle and abs(linePos - 20) < 40):
 				print("OBSTACLE")
 				obstacle = False
 				ser.write(b'\nO\n')
 				cv2.putText(image_rgb, "Obstacle end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+			elif(tg):
+				print("Finished turning Green")
+				turningGreen = 0
+				ser.write(b'\nG\n')
+				cv2.putText(image_rgb, "Green end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 
 		contours_right = False
 		contours_left = False   
@@ -590,10 +650,12 @@ while True:
 					else:
 						if(left > right):
 							ser.write(b'L')
+							turningGreen = 1
 							print("Send: L")
 							delay(0.5)
 						elif(right > left):
 							ser.write(b'R')
+							turningGreen = 2
 							print("Send: R")
 							delay(0.5)
 					grn_counter = 0
@@ -702,17 +764,6 @@ while True:
 
 		rawCapture.truncate(0)
 		DEBUG()
-
-		# save last 7 positions of the line
-		LinePosLastLoop[7] = LinePosLastLoop[6]
-		LinePosLastLoop[6] = LinePosLastLoop[5] 
-		LinePosLastLoop[5] = LinePosLastLoop[4] 
-		LinePosLastLoop[4] = LinePosLastLoop[3] 
-		LinePosLastLoop[3] = LinePosLastLoop[2]
-		LinePosLastLoop[2] = LinePosLastLoop[1]
-		LinePosLastLoop[1] = LinePosLastLoop[0]
-		LinePosLastLoop[0] = value
-
 
 		LinePosLastLoop[0] = value
 		for i in range(1, 8):

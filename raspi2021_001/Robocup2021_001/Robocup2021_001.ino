@@ -101,6 +101,19 @@ void setup() {
 
 }
 
+void turnGreen(bool left) {
+	turnRelative(left ? -10 : 10);
+	while(true) {
+		if(Serial2.available() > 0) {
+			char c = Serial2.read();
+			if(c == 'G') {
+				turnRelative(left ? -20 : 20);
+				break;
+			}
+		}
+		turnRelative(left ? -5 : 5);
+	}
+}
 void loop() {
 	readString = "";
 
@@ -114,10 +127,18 @@ void loop() {
 
 	if (readString != "") {
 		Serial.println(readString);
-		if (readString == "L") {
+		if (readString == "R") {
+			led(0, 0, 0);
+			drive(255, 255, 800);
+			turnGreen(false);
+			drive(-255, -255, 250);
+			drive(255, 255, 1);
+			led(0, 0, 0);
+		} if (readString == "L") {
 			led(1, 0, 0);
 			drive(255, 255, 800);
-			turnRelative(-75);
+			//turnRelative(-75);
+			turnGreen(true);
 			drive(-255, -255, 250);
 			drive(255, 255, 1);
 			led(0, 0, 0);   
@@ -139,7 +160,66 @@ void loop() {
 			turnRelative(-70);
 			drive(150, 150, 200);
 			drive(0, 0, 0);
-		}if (readString == "I") {
+		} if (readString.indexOf("RK") != -1) {
+			drive(0, 0, 0);
+			beep(1000);
+			String incomingString = "";
+			while (true) {
+				if (Serial2.available() > 0) {
+					incomingString = Serial2.readString();
+					//incomingString.trim();
+					String xval = getValue(incomingString, ':', 0);
+					String yval = getValue(incomingString, ':', 1);
+					String zval = getValue(incomingString, ':', 2);
+					int motorleft = xval.toInt();
+					int motorright = yval.toInt();
+					int duration = zval.toInt();   
+					pln(incomingString);
+
+					if(incomingString == "grabRescueKit") {
+						turnRelative(180);
+						drive(-200, -200, 50);
+						drive(0, 0, 0);
+						armDown();
+						armUp();
+						drive(200, 200, 100);
+						drive(0, 0, 0);
+						turnRelative(180);
+						drive(-200, -200, 100);
+						drive(0, 0, 0);
+						break;
+					} else if (incomingString == "armUp") {
+						drive(0, 0, 0);
+						armUp();
+						Serial2.println(1);
+					} else if (incomingString == "armDown") {
+						drive(0, 0, 0);
+						armDown();
+						Serial2.println(1);
+					} else {
+						/*
+						p(motorleft);
+						p("  ");
+						p(motorright);
+						pln("");
+						*/
+						if (motorleft == 0 && motorright == 0) {
+							if (duration == 0) { //turn to origin
+
+							} else {
+								turnRelative(duration);
+								Serial2.println(1);
+							}
+						} else {
+							drive(motorleft, motorright, duration);
+							drive(0, 0, 0);
+							Serial2.println(1);
+						}
+					}
+				}
+			}
+
+		} if (readString == "I") {
 			drive(255, 255, 550);
 		} if (readString == "IR") {
 			drive(0, 0, 0);
@@ -151,13 +231,6 @@ void loop() {
 			led(0, 0, 1);
 			drive(-255, 255, 100);
 			drive(255, 255, 550);
-		} if (readString == "R") {
-			led(0, 0, 0);
-			drive(255, 255, 800);
-			turnRelative(75);
-			drive(-255, -255, 250);
-			drive(255, 255, 1);
-			led(0, 0, 0);
 		} if (readString == "D") {
 			led(1, 1, 1);
 			drive(255, 255, 300);
@@ -224,7 +297,7 @@ void loop() {
 			}
 		}
 	}
-	obstacle3();
+	obstacle3(1);
 	//obstacle();
 }
 
@@ -235,6 +308,13 @@ void beep(int duration) {
 }
 
 void drive(int left, int right, int duration) {
+
+	if(duration < 0) {
+		int h = left;
+		left = right;
+		right = h;
+		duration *= -1;
+	}
 
 	if (right > 255) {
 		right = 255;
@@ -509,7 +589,7 @@ void obstacle2() {
 	}
 }
 
-void obstacle3() {
+void obstacle3(int sign) {
 	if (distance() < 50) {
 		if (distance() < 60) { //double check distance
 			if (distance() < 60) {
@@ -517,11 +597,21 @@ void obstacle3() {
 				led(1, 1, 1);
 				drive(-255, -255, 150);
 				turnRelative(-50);
+
+				if(distanceAvg() < 300) {
+					turnRelative(110);
+					sign *= -1;
+					//drive(255, 255, 120);
+				}
+
 				drive(255, 255, 200);
-				Serial2.println("OO");
+				Serial2.println("O");
 				while (1) {
-					drive(255, 255, 80);
-					turnRelative(10);
+					drive(255, 255, 50);
+					drive(0, 0, 0);
+					delay(200);
+					//turnRelative(10 * sign);
+					drive(255, -255, 90 * sign);
 					drive(0, 0, 0);
 					readString = "";
 					while (Serial2.available() > 0) {
@@ -535,7 +625,7 @@ void obstacle3() {
 						drive(0, 0, 0);
 						beep(1000);
 						drive(255, 255, 550);
-						turnRelative(-50);
+						turnRelative(-50 * sign);
 						drive(-255, -255, 200);
 						Serial2.println("Found Line");
 						return;
