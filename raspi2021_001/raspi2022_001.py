@@ -237,7 +237,7 @@ def findExit(pIsWallRight): #find green strip in the evacuation zone
 				break
 		"""
 
-def checkForCorner():
+def capture():
 	camera = PiCamera()
 	camera.resolution = (320, 180) 
 	camera.rotation = 0
@@ -248,24 +248,26 @@ def checkForCorner():
 
 	camera.capture(rCapture, format="bgr")
 	camera.close()
-	image = rCapture.array
 
-	black = cv2.inRange(image, (0, 0, 0), (75, 75, 75)) # bgr
+	return rCapture.array
+
+def checkForCorner():
+	image = capture()
+
+	black = cv2.inRange(image, (0, 0, 0), (75, 75, 75))
 
 	return cv2.countNonZero(black) > 10000
 
+def checkForExit():
+	image = capture()
+
+	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+	green = cv2.inRange(image, (52, 60, 48), (75, 255, 255)) # TODO: Werte anpassen
+
+	return cv2.countNonZero(green) > 10000 # TODO: Wert anpassen
+
 def rescueVictim():
-	camera = PiCamera()
-	camera.resolution = (320, 180)
-	camera.rotation = 0
-	camera.framerate = 32
-	time.sleep(0.5)
-
-	rCapture = PiRGBArray(camera)
-
-	camera.capture(rCapture, format="bgr")
-	camera.close()
-	image = rCapture.array	
+	image = capture()	
 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
 	
 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -287,34 +289,41 @@ def rescueVictim():
 
 			#cv2.imshow("image_rgb", image_rgb)
 
+			movement = 0 # movement in motorspeed * milliseconds
+			rotation = 0 # rotation in degrees
+
 			if(y < 120):
-				drive(180, 180, (130 - y) * 1.5)
+				ms = (130 - y) * 1.5
+				drive(180, 180, ms)
+				movement = 180 * ms
 			if(y > 150):
 				drive(-130, -130, 30)
+				movement = -130 * 30
 			if(abs(pos) > 10):
 				turnRelative(pos / 4)
+				rotation = pos / 4
 			if(155 > y > 115 and abs(pos) <= 10):
 				sendAndWait("grabVictim")
-				return 2
-			return 1
+				return (2, movement, rotation)
+			return (1, movement, rotation)
 
-	return 0
+	return (0, 0, 0)
 
 D_ONE_TILE = 1025
 
 def rescue():
-	###############################################
-	#. # 0, 90 								120, 90
-	# #
-	##
-	#
-	#
-	# ^ angle = 0
-	# -> angle = 90
-	#
-	# 0, 0 									120, 0
-	###############################################
-
+	#########################################
+	#. # 0, 2 						   3, 2 #
+	# #										#
+	##										# ^
+	#										# |
+	#										# y
+	# ^ angle = 0 							#
+	# -> angle = 90 						#
+	#										#
+	# 0, 0 							   3, 0 #
+	#########################################
+	#			x -->		
 
 	################## NEU
 	print("-------- RESCUE ---------")
@@ -404,207 +413,232 @@ def rescue():
 	if(angle == 90 or angle == 270):
 		sign = -1
 
+	for _ in range(3):
+		drive(255, 255, 200)
+		turnRelative(90 * sign)
+		drive(255, 255, 350)
+		turnRelative(-45 * sign)
+		drive(255, 255, 150)
+		turnRelative(-90 * sign)
+		drive(-255, -255, 300)
+		drive(255, 255, 150)
+		turnRelative(90 * sign)
+
+		ds = 1
+		if(angle == 180 or angle == 270):
+			ds = -1
+		for i in range(9):
+			x = x + dirx
+			y = y + diry
+			drive(255, 255, D_ONE_TILE)
+
+			if(i == 1 or i == 2):
+				#sendAndWait("turnToOrigin")
+				turnRelative(90 * ds)
+				#AUSRICHTEN
+			elif(i == 5 or i == 6):
+				turnRelative(-90 * ds)
+				#AUSRICHTEN
+			
+			res = rescueVictim()
+			totalMovementX = res[1] # First adjustment is always in x direction
+			totalMovementY = 0
+			currAngle = res[2]
+			while(res[0] == 1):
+				res = rescueVictim()
+				currAngle = currAngle + res[2]
+				totalMovementX = totalMovementX + res[1] * math.cos(currAngle)
+				totalMovementY = totalMovementY + res[1] * math.sin(currAngle)
+				print("VICTIM")
+			if(res[0] == 2):
+				print("CAPTURED")
+				# Move back according to the recorded movement
+				totalMovement = math.sqrt(totalMovementY * totalMovementY + totalMovementX * totalMovementX)
+				alpha = math.atan2(totalMovementY, totalMovementX)
+
+				turnRelative(currAngle - alpha)
+				drive(-200, -200, totalMovement / 200)
+				turnRelative(alpha) # turn back
+
+				# Start going back to corner by going the same path
+				j = i
+				while(j > 0):
+					j = j - 1
+					drive(255, 255, D_ONE_TILE)
+					if(i == 5 or i == 6):
+						turnRelative(90 * ds)
+					elif(i == 1 or i == 2):
+						turnRelative(-90 * ds)
+				# Now we're back at the tile where we started searching from
+				turnRelative(90)
+				drive(-200, -200, 300)
+				drive(200, 200, 150)
+				turnRelative(45)
+				drive(255, 255, 650)
+				turnRelative(-90)
+				drive(-255, -255, 400)
+
+				sendAndWait("drop")
+
+	# Start searching for exit
 	drive(255, 255, 200)
 	turnRelative(90 * sign)
 	drive(255, 255, 350)
 	turnRelative(-45 * sign)
 	drive(255, 255, 150)
+	# Ausrichten
 	turnRelative(-90 * sign)
 	drive(-255, -255, 300)
 	drive(255, 255, 150)
 	turnRelative(90 * sign)
 
-	returnTileX = cornerX
-	returnTileY = cornerY
-
-	if(angle == 90):
-		returnTileX = cornerX - 1
-	elif(angle == 270):
-		returnTileX = cornerX + 1
-	elif(angle == 0):
-		returnTileY = cornerY - 1
-	elif(angle == 180):
-		returnTileY = cornerY + 1
-
-	print(f"Return tile ({returnTileX}, {returnTileY})")
-
-	dirx = 0
-	diry = 0
-	if(cornerX == 0 and cornerY == 0):
-		dirx = 1
-		diry = 0
-	elif(cornerX == 3 and cornerY == 0):
-		dirx = -1
-		diry = 0
-	# TODO: Andere corner fälle
-
-	x = returnTileX
-	y = returnTileY
-
-	ds = 1
-	if(angle == 180 or angle == 270):
-		ds = -1
-	for i in range(9):
-		x = x + dirx
-		y = y + diry
+	for i in range(8):
 		drive(255, 255, D_ONE_TILE)
+		turnRelative(90 * sign)
+		if(checkForExit()):
+			drive(255, 255, 500)
+			return
+		turnRelative(-90 * sign)
 
-		if(i == 1 or i == 2):
-			#sendAndWait("turnToOrigin")
-			turnRelative(90 * ds)
-			#AUSRICHTEN
-		elif(i == 5 or i == 6):
-			turnRelative(-90 * ds)
-			#AUSRICHTEN
-		
-		res = rescueVictim()
-		while(res == 1):
-			res = rescueVictim()
-			print("VICTIM")
-		if(res == 2):
-			print("CAPTURED")
-			sendAndWait("turnToOrigin")
-			pass
-
-	print("END")
-	exit()
+		if(i == 1 or i == 3 or i == 6):
+			turnRelative(-90 * sign)
 	##################
-	noVictim = 0 #counter for frames without vitim, if x frames without one -> turn a bit around
-	turnCnt = 0 #how many degrees has the robot turned
-	vicitmsSaved = 0 #how many victims have been saved?
-	fullRotationCounter = 0 
+	# noVictim = 0 #counter for frames without victim, if x frames without one -> turn a bit around
+	# turnCnt = 0 #how many degrees has the robot turned
+	# vicitmsSaved = 0 #how many victims have been saved?
+	# fullRotationCounter = 0 
 
-	camera = PiCamera()
-	camera.resolution = (320, 180) 
-	camera.rotation = 0
-	camera.framerate = 32
-	rawCapture = PiRGBArray(camera, size=(320, 180))
-	print("Rescue program started")
-	time.sleep(1)
-	framesTotalRescue = 0 
-	startTimeRescue = time.time()
+	# camera = PiCamera()
+	# camera.resolution = (320, 180) 
+	# camera.rotation = 0
+	# camera.framerate = 32
+	# rawCapture = PiRGBArray(camera, size=(320, 180))
+	# print("Rescue program started")
+	# time.sleep(1)
+	# framesTotalRescue = 0 
+	# startTimeRescue = time.time()
 
-	isWallRight = True #were is the wall in the evacuation zone?
-	uselessCnt = 0
-	drive(255, 220, 2000)
-	turnRelative(80)
-	drive(-255, -255, 500)
-	sendAndWait("setOrigin") #save absolute position to come back to it afterwards
-	drive(255, 255, 1500)
-	"""
-	turnRelative(45)
-	drive(255, 255, 300)
-	turnRelative(90)
-	drive(-255, -255, 500)  
-	armDown()
-	armUp()
-	drive(255, 255, 1300)
-	sendAndWait("turnToOrigin")
-	drive(255, 255, 500)
-	"""
+	# isWallRight = True #were is the wall in the evacuation zone?
+	# uselessCnt = 0
+	# drive(255, 220, 2000)
+	# turnRelative(80)
+	# drive(-255, -255, 500)
+	# sendAndWait("setOrigin") #save absolute position to come back to it afterwards
+	# drive(255, 255, 1500)
+	# """
+	# turnRelative(45)
+	# drive(255, 255, 300)
+	# turnRelative(90)
+	# drive(-255, -255, 500)  
+	# armDown()
+	# armUp()
+	# drive(255, 255, 1300)
+	# sendAndWait("turnToOrigin")
+	# drive(255, 255, 500)
+	# """
 	
-	for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-		image = frame.array
-		image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
+	# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
+	# 	image = frame.array
+	# 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
 		
-		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+	# 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-		circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
+	# 	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
 
-		# ensure at least some circles were found
-		if circles is not None:
-			if noVictim > 5: #victim in the current frame -> lower noVictim counter
-				noVictim = noVictim - 5
-			else:
-				noVictim = 0
-			# convert the (x, y) coordinates and radius of the circles to integers
-			circles = np.round(circles[0, :]).astype("int")
-			# loop over the (x, y) coordinates and radius of the circles
-			for (x, y, r) in circles:
-				#print(y) #y pos of victim
-				# draw the circle in the output image, then draw a rectangle
-				cv2.circle(image, (x, y), r, (255, 255, 0), 4)
-				#victimColor = image[y, x, 0] + image[y, x, 1] + image[y, x, 2]
-				#print("Color of victim centre:", victimColor)
-				cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
-				ballPosition = x - 160
-				if ballPosition > -7 and ballPosition < 7: #Victim is horizontal aligned
-					print(y)
-					if y > 120 and y < 140: #turn around and grap ball
-						drive(-150, -150, 30)
-						turnRelative(180)
-						armDown()
-						armUp()
-						#turn to orogin and search for the black corner
-						sendAndWait("turnToOrigin")
-						"""findCorner(isWallRight)	
-						drive(255, 255, 1500) #don't search at the same place as before				
-						sendAndWait("turnToOrigin")
-						turnRelative(90)
-						drive(255, 255, 2000)
-						drive(-255, -255, 80)
-						turnRelative(-70)
-						drive(255, 255, 200)
-						turnRelative(-15)
-						camera.close()
-						cv2.destroyAllWindows()
-						findExit(isWallRight)"""
-						findCorner(isWallRight)
-						findExit()
-						return
-					elif y > 170:
-						drive(-255, -255, 80)
-					elif y > 115:
-						drive(-255, -255, 10)
-					elif y < 90:
-						drive(255, 255, 40)
-					elif y < 140:
-						drive(255, 255, 10)
-				elif ballPosition <= -7 and ballPosition >= -25:
-					drive(-150, 150, 30)
-				elif ballPosition <= -25:
-					drive(-255, 255, 80)
-				#drive(-150, 150, ballPosition * -0.5)
+	# 	# ensure at least some circles were found
+	# 	if circles is not None:
+	# 		if noVictim > 5: #victim in the current frame -> lower noVictim counter
+	# 			noVictim = noVictim - 5
+	# 		else:
+	# 			noVictim = 0
+	# 		# convert the (x, y) coordinates and radius of the circles to integers
+	# 		circles = np.round(circles[0, :]).astype("int")
+	# 		# loop over the (x, y) coordinates and radius of the circles
+	# 		for (x, y, r) in circles:
+	# 			#print(y) #y pos of victim
+	# 			# draw the circle in the output image, then draw a rectangle
+	# 			cv2.circle(image, (x, y), r, (255, 255, 0), 4)
+	# 			#victimColor = image[y, x, 0] + image[y, x, 1] + image[y, x, 2]
+	# 			#print("Color of victim centre:", victimColor)
+	# 			cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
+	# 			ballPosition = x - 160
+	# 			if ballPosition > -7 and ballPosition < 7: #Victim is horizontal aligned
+	# 				print(y)
+	# 				if y > 120 and y < 140: #turn around and grap ball
+	# 					drive(-150, -150, 30)
+	# 					turnRelative(180)
+	# 					armDown()
+	# 					armUp()
+	# 					#turn to orogin and search for the black corner
+	# 					sendAndWait("turnToOrigin")
+	# 					"""findCorner(isWallRight)	
+	# 					drive(255, 255, 1500) #don't search at the same place as before				
+	# 					sendAndWait("turnToOrigin")
+	# 					turnRelative(90)
+	# 					drive(255, 255, 2000)
+	# 					drive(-255, -255, 80)
+	# 					turnRelative(-70)
+	# 					drive(255, 255, 200)
+	# 					turnRelative(-15)
+	# 					camera.close()
+	# 					cv2.destroyAllWindows()
+	# 					findExit(isWallRight)"""
+	# 					findCorner(isWallRight)
+	# 					findExit()
+	# 					return
+	# 				elif y > 170:
+	# 					drive(-255, -255, 80)
+	# 				elif y > 115:
+	# 					drive(-255, -255, 10)
+	# 				elif y < 90:
+	# 					drive(255, 255, 40)
+	# 				elif y < 140:
+	# 					drive(255, 255, 10)
+	# 			elif ballPosition <= -7 and ballPosition >= -25:
+	# 				drive(-150, 150, 30)
+	# 			elif ballPosition <= -25:
+	# 				drive(-255, 255, 80)
+	# 			#drive(-150, 150, ballPosition * -0.5)
 
-				elif ballPosition >= 7 and ballPosition <= 25:
-					drive(150, -150, 30)
-				elif ballPosition >= 25:
-					drive(255, -255, 80)
-				cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
-		else:
-			noVictim = noVictim + 1 #one frame without victim -> increase counter
-			if noVictim >= 10: #No victim for 10 frames -> turn a bit
-				if turnCnt < 360:
-					if fullRotationCounter == 0:
-						turnRelative(45)
-						turnCnt = turnCnt + 45
-					elif fullRotationCounter == 1:
-						drive(255, 255, 500)
-						turnRelative(70)
-						turnCnt = turnCnt + 70
-					else:
-						uselessCnt = uselessCnt + 1
-						if uselessCnt == 1:
-							turnRelative(180)
-						drive(255, 255, 500)
-						turnRelative(-70)
-						turnCnt = turnCnt + 70
-				else:
-					print("turned full 360 degs")
-					#sendAndWait("dreheZuUrsprung")
-					fullRotationCounter = fullRotationCounter + 1
-					turnCnt = 0
+	# 			elif ballPosition >= 7 and ballPosition <= 25:
+	# 				drive(150, -150, 30)
+	# 			elif ballPosition >= 25:
+	# 				drive(255, -255, 80)
+	# 			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
+	# 	else:
+	# 		noVictim = noVictim + 1 #one frame without victim -> increase counter
+	# 		if noVictim >= 10: #No victim for 10 frames -> turn a bit
+	# 			if turnCnt < 360:
+	# 				if fullRotationCounter == 0:
+	# 					turnRelative(45)
+	# 					turnCnt = turnCnt + 45
+	# 				elif fullRotationCounter == 1:
+	# 					drive(255, 255, 500)
+	# 					turnRelative(70)
+	# 					turnCnt = turnCnt + 70
+	# 				else:
+	# 					uselessCnt = uselessCnt + 1
+	# 					if uselessCnt == 1:
+	# 						turnRelative(180)
+	# 					drive(255, 255, 500)
+	# 					turnRelative(-70)
+	# 					turnCnt = turnCnt + 70
+	# 			else:
+	# 				print("turned full 360 degs")
+	# 				#sendAndWait("dreheZuUrsprung")
+	# 				fullRotationCounter = fullRotationCounter + 1
+	# 				turnCnt = 0
 
-		cv2.imshow("Kugel output", image)
-		rawCapture.truncate(0)
-		key = cv2.waitKey(1) & 0xFF
-		framesTotalRescue = framesTotalRescue + 1
-		if key == ord("q"):
-			print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
-			camera.close()
-			break
+	# 	cv2.imshow("Kugel output", image)
+	# 	rawCapture.truncate(0)
+	# 	key = cv2.waitKey(1) & 0xFF
+	# 	framesTotalRescue = framesTotalRescue + 1
+	# 	if key == ord("q"):
+	# 		print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
+	# 		camera.close()
+	# 		break
 
-	print("Rescue Program stopped")
+	# print("Rescue Program stopped")
 
 ##############################################################################################
 while True:
