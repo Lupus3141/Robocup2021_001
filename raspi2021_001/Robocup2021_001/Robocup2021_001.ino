@@ -103,17 +103,23 @@ void setup() {
 
 void turnGreen(bool left) {
 	turnRelative(left ? -10 : 10);
+	int angle = 0;
 	while(true) {
-		if(Serial2.available() > 0) {
+		if(angle >= 60) return;
+		while(Serial2.available() > 0) {
 			char c = Serial2.read();
 			if(c == 'G') {
-				turnRelative(left ? -20 : 20);
+				beep(100);
+				turnRelative(left ? -30 : 30);
 				break;
 			}
 		}
+		angle += 5;
 		turnRelative(left ? -5 : 5);
+		delay(100);
 	}
 }
+
 void loop() {
 	readString = "";
 
@@ -297,7 +303,7 @@ void loop() {
 			}
 		}
 	}
-	obstacle3(1);
+	obstacle3();
 	//obstacle();
 }
 
@@ -474,7 +480,21 @@ void armHalfDown() {
 	servoString.detach();
 
 	servoArm.attach(23);
+	servoArm.write(110); //arm done
+	delay(900);
+	servoArm.detach();
+}
+
+void drop() {
+	servoString.attach(22);
+	servoString.write(180); //loose rope
+	delay(700);
+	servoString.detach();
+
+	servoArm.attach(23);
 	servoArm.write(140); //arm done
+	delay(900);
+	servoArm.write(10);
 	delay(900);
 	servoArm.detach();
 }
@@ -589,7 +609,8 @@ void obstacle2() {
 	}
 }
 
-void obstacle3(int sign) {
+void obstacle3() {
+	int sign = 1;
 	if (distance() < 50) {
 		if (distance() < 60) { //double check distance
 			if (distance() < 60) {
@@ -753,7 +774,26 @@ void rescue() {
 			int duration = zval.toInt();   
 			pln(incomingString);
 
-			if (incomingString == "armUp") {
+			if(incomingString == "dist") {
+				int di = distanceAvg();
+				Serial2.println(String(di));
+			} else if (incomingString == "drop") {
+				drive(0, 0, 0);
+				drop();
+				Serial2.println(1);
+			} else if (incomingString == "grabVictim") {
+				turnRelative(180);
+				drive(-200, -200, 50);
+				drive(0, 0, 0);
+				armDown();
+				armUp();
+				drive(200, 200, 100);
+				drive(0, 0, 0);
+				turnRelative(180);
+				drive(-200, -200, 100);
+				drive(0, 0, 0);
+				Serial2.println(1);
+			} else if (incomingString == "armUp") {
 				drive(0, 0, 0);
 				armUp();
 				Serial2.println(1);

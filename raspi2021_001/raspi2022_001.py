@@ -26,7 +26,7 @@ import random
 import os
 
 CUT = (0, 320, 140, 192)
-CUT_GRN = (50, 270, 50, 192)
+CUT_GRN = (50, 270, 110, 192)
 CUT_SILVER = (60, 280, 0, 120)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 CUT_TOP = (120, 200, 60, 120) #extra cut for skip at intersections
@@ -136,7 +136,7 @@ def distance():
 	while True:
 		readData = ser.readline().decode('ascii').rstrip()
 		if readData != "":
-			return int()
+			return int(readData) * 0.075
 
 def toCornerUnload():
 	camera = PiCamera()
@@ -236,7 +236,239 @@ def findExit(pIsWallRight): #find green strip in the evacuation zone
 			if key == ord("q"):
 				break
 		"""
+
+def checkForCorner():
+	camera = PiCamera()
+	camera.resolution = (320, 180) 
+	camera.rotation = 0
+	camera.framerate = 32
+	time.sleep(0.5)
+
+	rCapture = PiRGBArray(camera)
+
+	camera.capture(rCapture, format="bgr")
+	camera.close()
+	image = rCapture.array
+
+	black = cv2.inRange(image, (0, 0, 0), (75, 75, 75)) # bgr
+
+	return cv2.countNonZero(black) > 10000
+
+def rescueVictim():
+	camera = PiCamera()
+	camera.resolution = (320, 180)
+	camera.rotation = 0
+	camera.framerate = 32
+	time.sleep(0.5)
+
+	rCapture = PiRGBArray(camera)
+
+	camera.capture(rCapture, format="bgr")
+	camera.close()
+	image = rCapture.array	
+	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
+	
+	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
+
+	if(circles is not None):
+		circles = np.round(circles[0, :]).astype("int")
+		if(len(circles) > 0):
+			x, y, r = circles[0]
+
+			x = int(x)
+			y = int(y)
+
+			pos = x - 160
+
+			#cv2.rectangle(image_rgb, (x, y), (x + w, y + h), (50, 50, 200), 2)
+			#cv2.putText(image_rgb, str(pos), (x, y + h + 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 50, 200), 2, cv2.LINE_AA)
+
+			#cv2.imshow("image_rgb", image_rgb)
+
+			if(y < 120):
+				drive(180, 180, (130 - y) * 1.5)
+			if(y > 150):
+				drive(-130, -130, 30)
+			if(abs(pos) > 10):
+				turnRelative(pos / 4)
+			if(155 > y > 115 and abs(pos) <= 10):
+				sendAndWait("grabVictim")
+				return 2
+			return 1
+
+	return 0
+
+D_ONE_TILE = 1025
+
 def rescue():
+	###############################################
+	#. # 0, 90 								120, 90
+	# #
+	##
+	#
+	#
+	# ^ angle = 0
+	# -> angle = 90
+	#
+	# 0, 0 									120, 0
+	###############################################
+
+
+	################## NEU
+	print("-------- RESCUE ---------")
+
+	drive(255, 255, 1000)
+	distToEntranceWall = distance()
+	print(distToEntranceWall)
+
+	x = 0
+	y = 0
+	angle = 0
+	turnRelative(90)
+	distToRightWall = distance()
+	
+	if(distToEntranceWall < 80):
+		angle = 90
+		if(distToRightWall < 10):
+			x = 3
+			y = 0
+		else:
+			x = 0
+			y = 0
+	else:
+		angle = 180
+		if(distToRightWall < 10):
+			x = 0
+			y = 0
+		else:
+			x = 0
+			y = 2
+
+	print(f"We are at ({x}, {y}), angle = {angle}")
+
+	drive(-200, -200, 500)
+	sendAndWait("setOrigin")
+	drive(200, 200, 250)
+	# if(angle == 90):
+	# 	turnRelative(-90)
+	# 	angle = angle - 90
+
+	num = 1
+	if(angle == 90):
+		num = 2
+
+	cornerX = 0
+	cornerY = 0
+	for i in range(3):
+		print(num)
+		drive(255, 255, D_ONE_TILE * num)
+		if(angle == 0):
+			cornerY = cornerY + num
+		elif(angle == 90):
+			cornerX = cornerX + num
+		elif(angle == 180):
+			cornerY = cornerY - num
+		elif(angle == 270):
+			cornerX = cornerX - num
+
+		# Search for corner
+		if(checkForCorner()):
+			print("CORNER")
+			break
+
+		if(num == 1):
+			num = 2
+		elif(num == 2):
+			num = 1
+
+		drive(255, 255, D_ONE_TILE)
+		drive(255, 255, 300)
+		drive(-255, -255, 130)
+		turnRelative(-90)
+		drive(-255, -255, 300)
+		drive(255, 255, 130)
+		angle = angle - 90
+		if(angle < 0):
+			angle = angle + 360
+
+	turnRelative(-45)
+	drive(255, 255, 650)
+	turnRelative(-90)
+	drive(-255, -255, 650)
+
+	sendAndWait("drop")
+
+	sign = 1
+	if(angle == 90 or angle == 270):
+		sign = -1
+
+	drive(255, 255, 200)
+	turnRelative(90 * sign)
+	drive(255, 255, 350)
+	turnRelative(-45 * sign)
+	drive(255, 255, 150)
+	turnRelative(-90 * sign)
+	drive(-255, -255, 300)
+	drive(255, 255, 150)
+	turnRelative(90 * sign)
+
+	returnTileX = cornerX
+	returnTileY = cornerY
+
+	if(angle == 90):
+		returnTileX = cornerX - 1
+	elif(angle == 270):
+		returnTileX = cornerX + 1
+	elif(angle == 0):
+		returnTileY = cornerY - 1
+	elif(angle == 180):
+		returnTileY = cornerY + 1
+
+	print(f"Return tile ({returnTileX}, {returnTileY})")
+
+	dirx = 0
+	diry = 0
+	if(cornerX == 0 and cornerY == 0):
+		dirx = 1
+		diry = 0
+	elif(cornerX == 3 and cornerY == 0):
+		dirx = -1
+		diry = 0
+	# TODO: Andere corner fälle
+
+	x = returnTileX
+	y = returnTileY
+
+	ds = 1
+	if(angle == 180 or angle == 270):
+		ds = -1
+	for i in range(9):
+		x = x + dirx
+		y = y + diry
+		drive(255, 255, D_ONE_TILE)
+
+		if(i == 1 or i == 2):
+			#sendAndWait("turnToOrigin")
+			turnRelative(90 * ds)
+			#AUSRICHTEN
+		elif(i == 5 or i == 6):
+			turnRelative(-90 * ds)
+			#AUSRICHTEN
+		
+		res = rescueVictim()
+		while(res == 1):
+			res = rescueVictim()
+			print("VICTIM")
+		if(res == 2):
+			print("CAPTURED")
+			sendAndWait("turnToOrigin")
+			pass
+
+	print("END")
+	exit()
+	##################
 	noVictim = 0 #counter for frames without vitim, if x frames without one -> turn a bit around
 	turnCnt = 0 #how many degrees has the robot turned
 	vicitmsSaved = 0 #how many victims have been saved?
@@ -421,6 +653,32 @@ while True:
 		cut_silver = image[CUT_SILVER[2]:CUT_SILVER[3],CUT_SILVER[0]:CUT_SILVER[1]]
 		cut_rescuekit = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
 		cut_stop = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
+
+		if(turningGreen != 0):
+			off = 0
+			if(turningGreen == 1):
+				off = -60
+			else:
+				off = 60
+
+			cut_green_stop = image[120:192,(130 + off):(190 + off)]
+
+			green_stop = cv2.inRange(cut_green_stop, (0, 0, 0), (255, 255, 75))
+			#contours_green_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+
+			cv2.rectangle(image_rgb, (130 + off, 120), (190 + off, 192), (0, 255, 0), 2)
+
+			print(cv2.countNonZero(green_stop))
+			if cv2.countNonZero(green_stop) > 300:	
+				print("Finished turning Green")
+				turningGreen = 0
+				ser.write(b'\nG\n')
+				delay(0.2)
+				#ser.write(b'G')
+				#delay(0.2)
+				cv2.putText(image_rgb, "Green end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+
+
 		#cut_obstacle = image[CUT_OBSTACLE[0]:CUT_OBSTACLE[1],CUT_OBSTACLE[2]:CUT_OBSTACLE[3]]
 
 		#cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
@@ -430,6 +688,7 @@ while True:
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
+
 		#obstacle = cv2.inRange(cut_obstacle, (0, 0, 0), (255, 255, 48))
 
 
@@ -471,6 +730,8 @@ while True:
 				rescuekit = cv2.dilate(rescuekit, kernel, iterations=5)
 				contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
+				if(len(contours_rescuekit) == 0):
+					break
 				b = cv2.boundingRect(contours_rescuekit[0])
 				x, y, w, h = b
 				pos = x + w / 2 - 160
@@ -597,23 +858,18 @@ while True:
 			#cv2.line(image_rgb, (0, 110), (319, 110), (255, 0, 0), 2)
 			lastLinePos = linePos
 
-			tg = False
-			if(turningGreen == 1):
-				tg = abs(linePos + 10) < 30
-			elif(turningGreen == 2):
-				tg = abs(linePos - 10) < 30
+			# tg = False
+			# if(turningGreen == 1):
+			# 	tg = abs(linePos + 10) < 30
+			# elif(turningGreen == 2):
+			# 	tg = abs(linePos - 10) < 30
 
 			if(obstacle and abs(linePos - 20) < 40):
 				print("OBSTACLE")
 				obstacle = False
 				ser.write(b'\nO\n')
 				cv2.putText(image_rgb, "Obstacle end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-			elif(tg):
-				print("Finished turning Green")
-				turningGreen = 0
-				ser.write(b'\nG\n')
-				cv2.putText(image_rgb, "Green end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-
+			
 		contours_right = False
 		contours_left = False   
 		if(len(contours_grn) > 0 and len(contours_grn) < 3):
