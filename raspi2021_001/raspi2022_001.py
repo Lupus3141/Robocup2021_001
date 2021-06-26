@@ -24,7 +24,6 @@ import cv2
 import serial
 import random
 import os
-import math
 
 CUT = (0, 320, 140, 192)
 CUT_GRN = (50, 270, 110, 192)
@@ -106,10 +105,7 @@ def delay(duration):
 	timeWaitet = timeWaitet + duration
 
 def drive(motorLeft, motorRight, duration):
-	if int(duration) == 0:
-		print("Duration is 1, cancelled")
-		return
-	send = str(int(motorLeft)) + ':' + str(int(motorRight)) + ':' + str(int(duration))
+	send = str(motorLeft) + ':' + str(motorRight) + ':' + str(duration)
 	print("Send:", send)
 	ser.write(send.encode())
 	duration = float(duration / 1000.0)
@@ -361,8 +357,7 @@ def rescue():
 
 	print(f"We are at ({x}, {y}), angle = {angle}")
 
-	drive(-255, -255, 500)
-	drive(255, 255, 200)
+	drive(-200, -200, 500)
 	sendAndWait("setOrigin")
 	drive(200, 200, 250)
 	# if(angle == 90):
@@ -433,6 +428,8 @@ def rescue():
 		if(angle == 180 or angle == 270):
 			ds = -1
 		for i in range(9):
+			x = x + dirx
+			y = y + diry
 			drive(255, 255, D_ONE_TILE)
 
 			if(i == 1 or i == 2):
