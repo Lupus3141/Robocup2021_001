@@ -456,6 +456,7 @@ def rescue():
 			if(res[0] == 2):
 				print("CAPTURED")
 				# Move back according to the recorded movement
+				"""     SVENS CODE:
 				totalMovement = math.sqrt(totalMovementY * totalMovementY + totalMovementX * totalMovementX)
 				alpha = math.atan2(totalMovementY, totalMovementX)
 
@@ -482,7 +483,9 @@ def rescue():
 				drive(-255, -255, 400)
 
 				sendAndWait("drop")
-
+				"""
+				########### MY CODE ###########
+				sendAndWait("turnToOrigin")
 	# Start searching for exit
 	drive(255, 255, 200)
 	turnRelative(90 * sign)
@@ -658,12 +661,12 @@ while True:
 		#	s2 = ser.readline()
 		#	print("TEENSY_DEBUG: " + str(s2))
 
-		if(ser.in_waiting != 0):
-			s = str(ser.readline())
-			print("TEENSY SAID: " + s)
-			if("O" in s):
-				obstacle = True
-				print("OBSTACLE")
+		# if(ser.in_waiting != 0):
+		# 	s = str(ser.readline())
+		# 	print("TEENSY SAID: " + s)
+		# 	if("O" in s):
+		# 		obstacle = True
+		# 		print("OBSTACLE")
 
 		image = frame.array
 		image_rgb = image 
@@ -716,9 +719,6 @@ while True:
 				cv2.putText(image_rgb, "Green end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 
 
-		#cut_obstacle = image[CUT_OBSTACLE[0]:CUT_OBSTACLE[1],CUT_OBSTACLE[2]:CUT_OBSTACLE[3]]
-
-		#cv2.GaussianBlur(cut_silver, ((9, 9)), 2, 2) #cut to detect silver
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75))
 		green = cv2.inRange(cut_grn, (52, 60, 48), (75, 255, 255))
@@ -726,7 +726,6 @@ while True:
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
 
-		#obstacle = cv2.inRange(cut_obstacle, (0, 0, 0), (255, 255, 48))
 
 
 		kernel = np.ones((4, 4), np.uint8)
@@ -738,16 +737,12 @@ while True:
 		contours_silver, hierarchy_silver = cv2.findContours(silber.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		contours_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
-		#contours_obstacle, hierarchy_obstacle = cv2.findContours(obstacle.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-		#cv2.imshow("Obstacle", obstacle)
 
 		
 		linePos = 0
 		index = 0
-		#print("Len contours red:", len(contours_stop))
-
-		#if len(contours_obstacle) > 0:	
+		
 		if len(contours_rescuekit) > 0:			
 			ser.write(b'RK') #send rescue kit
 			delay(1)
