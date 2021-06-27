@@ -67,9 +67,12 @@ void setup() {
 	//Gyrosensor
 	if (!bno.begin())  {
 		Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
-		//while (1);
-		beep(1000);
-		led(0, 0, 1);
+		while (1) {
+			led(0, 0, 1);
+			beep(100);
+			led(0, 0, 0);
+			beep(100);
+		}
 	}
 
 	//distance sensor
@@ -100,25 +103,6 @@ void setup() {
 
 	//while(distanceAvg() > 100) {}
 
-}
-
-void turnGreen(bool left) {
-	turnRelative(left ? -10 : 10);
-	int angle = 0;
-	while(true) {
-		if(angle >= 60) return;
-		while(Serial2.available() > 0) {
-			char c = Serial2.read();
-			if(c == 'G') {
-				beep(100);
-				turnRelative(left ? -30 : 30);
-				break;
-			}
-		}
-		angle += 5;
-		turnRelative(left ? -5 : 5);
-		delay(100);
-	}
 }
 
 void loop() {
@@ -481,31 +465,27 @@ void armDown() {
 	servoArm.detach();
 }
 
-void armHalfDown() {
+void drop() { //drops rescue kit into black corner
 	servoString.attach(22);
 	servoString.write(180); //loose rope
 	delay(700);
 	servoString.detach();
 
 	servoArm.attach(23);
-	servoArm.write(110); //arm done
+	servoArm.write(140);
 	delay(900);
-	servoArm.detach();
-}
-
-void drop() {
-	servoString.attach(22);
-	servoString.write(180); //loose rope
-	delay(700);
-	servoString.detach();
-
-	servoArm.attach(23);
-	servoArm.write(140); //arm done
-	delay(900);
+	for (int i = 0; i < 6; i++) {
+		drive(-255, -255, 50);
+		drive(255, 255, 50);
+	}
 	servoArm.write(60);
 	delay(900);
 	servoArm.write(140);
 	delay(900);
+	for (int i = 0; i < 6; i++) {
+		drive(-255, -255, 50);
+		drive(255, 255, 50);
+	}
 	servoArm.write(10);
 	delay(900);
 	servoArm.detach();
@@ -521,9 +501,6 @@ void armUp() {
 	servoArm.write(30); //arm up
 	delay(900);
 	servoArm.detach();
-
-	
-
 }
 
 int distance() {
@@ -732,7 +709,7 @@ void obstacle() {
 }
 /*
 
-//following fuction does the same as turnToOrigin, but using the laser distance sensor -> no longer used because inaccurate
+//following fuction does the same as turnToOrigin, but using the laser distance sensor -> no longer used because its quite inaccurate
 void ausrichten() {
 	bool ungerade = true;
 	int last = distanceAvg();
@@ -844,29 +821,7 @@ void rescue() {
 				drive(0, 0, 10);
 				Serial2.println(1);
 				return;
-			} else if (incomingString == "driveToBlackCornerAndSaveVictim") {
-				turnRelative(90);
-				while (distanceAvg() > 170) {
-					drive(255, 255, 0);
-					led(0, 0, 1);
-				}
-				turnRelative(90);
-				while (distanceAvg() > 400) {
-					drive(255, 255, 0);
-					led(0, 0, 1);
-				}
-				turnRelative(45);
-				drive(255, 255, 400);
-				turnRelative(90);
-				drive(-255, -255, 500);
-				drive(0, 0, 0);
-				armHalfDown();
-				armUp();
-				drive(255, 255, 1000);
-
-				turnAbsolute(origin);
-				Serial2.println(1);
-			} else {
+			}  else {
 				/*
 				p(motorleft);
 				p("  ");
@@ -909,4 +864,23 @@ void led(int green, int yellow, int red) {
 	digitalWrite(ledGreenPin, constrain(green, 0, 1));
 	digitalWrite(ledYellowPin, constrain(yellow, 0, 1));
 	digitalWrite(ledRedPin, constrain(red, 0, 1));
+}
+
+void turnGreen(bool left) {
+	turnRelative(left ? -10 : 10);
+	int angle = 0;
+	while(true) {
+		if(angle >= 60) return;
+		while(Serial2.available() > 0) {
+			char c = Serial2.read();
+			if(c == 'G') {
+				beep(100);
+				turnRelative(left ? -30 : 30);
+				break;
+			}
+		}
+		angle += 5;
+		turnRelative(left ? -5 : 5);
+		delay(100);
+	}
 }
