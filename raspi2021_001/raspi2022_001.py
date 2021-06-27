@@ -203,12 +203,13 @@ def checkForCorner():
 	return cv2.countNonZero(black) > 10000
 
 def checkForExit():
+	print("CHECKING FOR EXIT")
 	image = capture()
 
 	image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-	green = cv2.inRange(image, (52, 60, 48), (75, 255, 255)) # TODO: Werte anpassen
+	green = cv2.inRange(image, (30, 60, 48), (55, 255, 255)) # TODO: Werte anpassen
 
-	return cv2.countNonZero(green) > 10000 # TODO: Wert anpassen
+	return cv2.countNonZero(green) > 2000 # TODO: Wert anpassen
 
 def rescueVictim():
 	image = capture()	
@@ -247,6 +248,7 @@ def rescueVictim():
 				turnRelative(pos / 4)
 				rotation = pos / 4
 			if(155 > y > 115 and abs(pos) <= 10):
+				drive(-255, -255, 50);
 				sendAndWait("grabVictim")
 				return (2, movement, rotation)
 			return (1, movement, rotation)
@@ -305,7 +307,7 @@ def rescue():
 
 	drive(200, 200, 500)
 	#sendAndWait("setOrigin")
-	drive(-200, -200, 150)
+	drive(-200, -200, 100)
 	turnRelative(-90)
 	# if(angle == 90):
 	# 	turnRelative(-90)
@@ -351,9 +353,9 @@ def rescue():
 
 
 	turnRelative(-45)
-	drive(255, 255, 650)
+	drive(255, 255, 500)
 	turnRelative(-90)
-	drive(-255, -255, 450)
+	drive(-255, -255, 650)
 
 	sendAndWait("drop")
 
@@ -361,30 +363,37 @@ def rescue():
 	if(angle == 90 or angle == 270):
 		sign = -1
 
-	for _ in range(3):
-		drive(255, 255, 200)
+	for _ in range(1):
+		drive(255, 255, 150)
 		turnRelative(90 * sign)
 		drive(255, 255, 350)
 		turnRelative(-45 * sign)
 		drive(255, 255, 100)
 		turnRelative(90 * sign)
-		drive(255, 255, 450)
+		drive(255, 255, 900)
 		drive(-255, -255, 150)
 		turnRelative(-90 * sign)
 
 		ds = -1
+		sendAndWait("setOrigin")
 		for i in range(9):
 			drive(255, 255, D_ONE_TILE)
-
+			sendAndWait("turnToOrigin")
 			if(i == 1 or i == 2):
 				#sendAndWait("turnToOrigin")
 				turnRelative(90 * ds)
+				sendAndWait("setOrigin")
 				#AUSRICHTEN
 			elif(i == 5 or i == 6):
 				turnRelative(-90 * ds)
+				sendAndWait("setOrigin")
 				#AUSRICHTEN
 			
+			#TEST
+
 			res = rescueVictim()
+			# if(res[0] == 1):
+			# 	sendAndWait("setOrigin")
 			totalMovementX = 0 # First adjustment is always in y direction
 			totalMovementY = res[1]
 			currAngle = res[2]
@@ -407,20 +416,21 @@ def rescue():
 				turnRelative(alpha - currAngle)
 				drive(-255, -255, totalMovement / 255)
 				turnRelative(-alpha) # turn back
+				sendAndWait("turnToOrigin")
 
 				# Start going back to corner by going the same path
 				j = i + 1
 				while(j > 0):
+					j = j - 1
 					print(j)
 					if(j == 5 or j == 6):
 						turnRelative(90 * ds)
 					elif(j == 1 or j == 2):
 						turnRelative(-90 * ds)
 					drive(-255, -255, D_ONE_TILE)
-					j = j - 1
 				# Now we're back at the tile where we started searching from
 				turnRelative(-90)
-				drive(-200, -200, 300)
+				drive(-200, -200, 500)
 				drive(200, 200, 150)
 				turnRelative(-45)
 				drive(255, 255, 650)
@@ -428,29 +438,49 @@ def rescue():
 				drive(-255, -255, 400)
 
 				sendAndWait("drop")
-				
-	# Start searching for exit
-	drive(255, 255, 200)
-	turnRelative(90 * sign)
-	drive(255, 255, 350)
-	turnRelative(-45 * sign)
-	drive(255, 255, 150)
-	# Ausrichten
-	turnRelative(-90 * sign)
-	drive(-255, -255, 300)
-	drive(255, 255, 150)
-	turnRelative(90 * sign)
 
+				drive(200, 200, 150)
+				turnRelative(90)
+				drive(255, 255, 550)
+				turnRelative(-45)
+				drive(200, 200, 100)
+				turnRelative(-90)
+				drive(-200, -200, 500)
+				drive(200, 200, 130)
+				turnRelative(90)
+				sendAndWait("setOrigin")
+				break
+	print("DONE WITH FOR, NICE")		
+	# Start searching for exit
+	# drive(255, 255, 200)
+	# turnRelative(90 * sign)
+	# drive(255, 255, 350)
+	# turnRelative(-45 * sign)
+	# drive(255, 255, 150)
+	# # Ausrichten
+	# turnRelative(-90 * sign)
+	# drive(-255, -255, 300)
+	# drive(255, 255, 150)
+	# turnRelative(90 * sign)
+	print("Searching for exit...")
 	for i in range(8):
-		drive(255, 255, D_ONE_TILE)
 		turnRelative(90 * sign)
 		if(checkForExit()):
+			print("FOUND EXIT")
 			drive(255, 255, 500)
 			return
 		turnRelative(-90 * sign)
+		sendAndWait("turnToOrigin")
+
+		drive(255, 255, 975)
+
+		sendAndWait("turnToOrigin")
 
 		if(i == 1 or i == 3 or i == 6):
 			turnRelative(-90 * sign)
+			drive(-200, -200, 450)
+			sendAndWait("setOrigin")
+			drive(200, 200, 100)
 
 
 def checkRescue():

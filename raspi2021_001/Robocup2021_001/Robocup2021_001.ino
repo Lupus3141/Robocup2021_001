@@ -119,9 +119,9 @@ void loop() {
 	if (readString != "") {
 		Serial.println(readString);
 		if(readString == "dist") {
-			int di = distanceAvg();
+			drive(0, 0, 0);
+			int di = distance();
 			Serial2.println(String(di));
-
 		} if (readString == "R") {
 			led(0, 0, 0);
 			drive(255, 255, 800);
@@ -365,45 +365,45 @@ void turnRelative(float deg) {
 		//p(endPos);
 		if (startPos >= 0.0 && startPos <=  182) {
 			while (getXOrientation() < endPos) {
-				drive(130, -130, 0);
+				drive(200, -200, 0);
 			}
 		} else {
 			if (endPos < 359.9999) {
 				while (getXOrientation() < endPos) {
-					drive(130, -130, 0);
+					drive(200, -200, 0);
 				}
 			} else {
 				while (getXOrientation() > 1.0) {
-					drive(130, -130, 0);
+					drive(200, -200, 0);
 				}
 				endPos = endPos - 360.0;
 				while (getXOrientation() < endPos) {
-					drive(130, -130, 0);
+					drive(200, -200, 0);
 				}
 			}
 		}
-		drive(-130, 130, 40);
+		drive(-200, 200, 40);
 	} else {
 		if (startPos >= 0 && startPos < 182) {
 			if (endPos >= 0.0) {
 				while (getXOrientation() > endPos) {
-					drive(-130, 130, 0);
+					drive(-200, 200, 0);
 				}
 			} else {
 				while (getXOrientation() < 359.0) {
-					drive(-130, 130, 0);
+					drive(-200, 200, 0);
 				}
 				endPos = endPos + 360;
 				while (getXOrientation() > endPos) {
-					drive(-130, 130, 0);
+					drive(-200, 200, 0);
 				}
 			}
 		} else {
 			while (getXOrientation() > endPos) {
-				drive(-130, 130, 0);
+				drive(-200, 200, 0);
 			}
 		}
-		drive(130, -130, 40);
+		drive(200, -200, 40);
 	}
 	drive(0, 0, 0);
 }
@@ -474,18 +474,10 @@ void drop() { //drops rescue kit into black corner
 	servoArm.attach(23);
 	servoArm.write(140);
 	delay(900);
-	for (int i = 0; i < 6; i++) {
-		drive(-255, -255, 50);
-		drive(255, 255, 50);
-	}
 	servoArm.write(60);
 	delay(900);
 	servoArm.write(140);
 	delay(900);
-	for (int i = 0; i < 6; i++) {
-		drive(-255, -255, 50);
-		drive(255, 255, 50);
-	}
 	servoArm.write(10);
 	delay(900);
 	servoArm.detach();
