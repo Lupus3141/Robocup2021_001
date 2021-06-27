@@ -271,8 +271,8 @@ def rescue():
 
 	################## NEU
 	print("-------- RESCUE ---------")
-
-	drive(255, 255, 1000)
+	sendAndWait("Rescue")
+	drive(255, 255, 800)
 	distToEntranceWall = distance()
 	print(distToEntranceWall)
 
@@ -282,39 +282,42 @@ def rescue():
 	turnRelative(90)
 	distToRightWall = distance()
 	
-	if(distToEntranceWall < 80):
-		angle = 90
-		if(distToRightWall < 10):
-			x = 3
-			y = 0
-		else:
-			x = 0
-			y = 0
-	else:
-		angle = 180
-		if(distToRightWall < 10):
-			x = 0
-			y = 0
-		else:
-			x = 0
-			y = 2
+	# if(distToEntranceWall < 80):
+	# 	angle = 90
+	# 	if(distToRightWall < 10):
+	# 		x = 3
+	# 		y = 0
+	# 	else:
+	# 		x = 0
+	# 		y = 0
+	# else:
+	# 	angle = 180
+	# 	if(distToRightWall < 10):
+	# 		x = 0
+	# 		y = 0
+	# 	else:
+	# 		x = 0
+	# 		y = 2
 
-	print(f"We are at ({x}, {y}), angle = {angle}")
+	# print(f"We are at ({x}, {y}), angle = {angle}")
+	angle = 0
+	#turnRelative(180)
 
-	drive(-200, -200, 500)
-	sendAndWait("setOrigin")
-	drive(200, 200, 250)
+	drive(200, 200, 500)
+	#sendAndWait("setOrigin")
+	drive(-200, -200, 150)
+	turnRelative(-90)
 	# if(angle == 90):
 	# 	turnRelative(-90)
 	# 	angle = angle - 90
 
 	num = 1
-	if(angle == 90):
+	if(angle == 90 or angle == 270):
 		num = 2
 
 	cornerX = 0
 	cornerY = 0
-	for i in range(3):
+	for _ in range(3):
 		print(num)
 		drive(255, 255, D_ONE_TILE * num)
 		if(angle == 0):
@@ -342,14 +345,15 @@ def rescue():
 		turnRelative(-90)
 		drive(-255, -255, 300)
 		drive(255, 255, 130)
-		angle = angle - 90
+		angle = angle + 90
 		if(angle < 0):
 			angle = angle + 360
+
 
 	turnRelative(-45)
 	drive(255, 255, 650)
 	turnRelative(-90)
-	drive(-255, -255, 650)
+	drive(-255, -255, 450)
 
 	sendAndWait("drop")
 
@@ -362,15 +366,13 @@ def rescue():
 		turnRelative(90 * sign)
 		drive(255, 255, 350)
 		turnRelative(-45 * sign)
-		drive(255, 255, 150)
-		turnRelative(-90 * sign)
-		drive(-255, -255, 300)
-		drive(255, 255, 150)
+		drive(255, 255, 100)
 		turnRelative(90 * sign)
+		drive(255, 255, 450)
+		drive(-255, -255, 150)
+		turnRelative(-90 * sign)
 
-		ds = 1
-		if(angle == 180 or angle == 270):
-			ds = -1
+		ds = -1
 		for i in range(9):
 			drive(255, 255, D_ONE_TILE)
 
@@ -383,44 +385,46 @@ def rescue():
 				#AUSRICHTEN
 			
 			res = rescueVictim()
-			totalMovementX = res[1] # First adjustment is always in x direction
-			totalMovementY = 0
+			totalMovementX = 0 # First adjustment is always in y direction
+			totalMovementY = res[1]
 			currAngle = res[2]
 			while(res[0] == 1):
 				res = rescueVictim()
 				currAngle = currAngle + res[2]
-				totalMovementX = totalMovementX + res[1] * math.cos(currAngle)
-				totalMovementY = totalMovementY + res[1] * math.sin(currAngle)
+				totalMovementX = totalMovementX + res[1] * math.sin(currAngle / 180 * math.pi)
+				totalMovementY = totalMovementY + res[1] * math.cos(currAngle / 180 * math.pi)
+				print(f"MOVEMENT at {currAngle}: {totalMovementX}, {totalMovementY}")
 				print("VICTIM")
 			if(res[0] == 2):
 				print("CAPTURED")
 				# Move back according to the recorded movement
 				totalMovement = math.sqrt(totalMovementY * totalMovementY + totalMovementX * totalMovementX)
-				alpha = math.atan2(totalMovementY, totalMovementX)
-				alpha = ((alpha * 360) / (2*3.1415926535)) #convert to dregrees
+				alpha = math.atan2(totalMovementX, totalMovementY)
+				alpha = alpha * 180 / math.pi #convert to dregrees
 				print("ALPHA:", alpha)
-				print("TOTAL MOVEMENT", totalMovement)
+				print(f"TOTAL MOVEMENT {totalMovement} ({totalMovementX}, {totalMovementY})")
 				print("CURRENT ANGLE", currAngle)
-				turnRelative(currAngle - alpha)
-				drive(-200, -200, totalMovement / 200)
-				turnRelative(alpha) # turn back
+				turnRelative(alpha - currAngle)
+				drive(-255, -255, totalMovement / 255)
+				turnRelative(-alpha) # turn back
 
 				# Start going back to corner by going the same path
-				j = i
+				j = i + 1
 				while(j > 0):
-					j = j - 1
-					drive(255, 255, D_ONE_TILE)
-					if(i == 5 or i == 6):
+					print(j)
+					if(j == 5 or j == 6):
 						turnRelative(90 * ds)
-					elif(i == 1 or i == 2):
+					elif(j == 1 or j == 2):
 						turnRelative(-90 * ds)
+					drive(-255, -255, D_ONE_TILE)
+					j = j - 1
 				# Now we're back at the tile where we started searching from
-				turnRelative(90)
+				turnRelative(-90)
 				drive(-200, -200, 300)
 				drive(200, 200, 150)
-				turnRelative(45)
+				turnRelative(-45)
 				drive(255, 255, 650)
-				turnRelative(-90)
+				turnRelative(90)
 				drive(-255, -255, 400)
 
 				sendAndWait("drop")
@@ -448,6 +452,20 @@ def rescue():
 		if(i == 1 or i == 3 or i == 6):
 			turnRelative(-90 * sign)
 
+
+def checkRescue():
+	d = distance()
+	print(f"DISTANCE: {d}")
+	if(d > 50 and d < 200):
+		cv2.destroyAllWindows()
+		camera.close()
+		rescue()
+		return True
+	else:
+		print("NO EVACUATION ZONE")
+		rescueCounter = 0
+		return False
+	
 
 ##############################################################################################
 while True:
@@ -529,8 +547,6 @@ while True:
 		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
 
-
-
 		kernel = np.ones((4, 4), np.uint8)
 		green = cv2.erode(green, kernel, iterations=3)
 		green = cv2.dilate(green, kernel, iterations=5)
@@ -541,13 +557,13 @@ while True:
 		contours_rescuekit, hierarchy_rescuekit = cv2.findContours(rescuekit.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 		contours_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-
-		
 		linePos = 0
 		index = 0
 		
-		if len(contours_rescuekit) > 0:			
+		if len(contours_rescuekit) > 0 and cv2.countNonZero(rescuekit) > 1000:
+
 			ser.write(b'RK') #send rescue kit
+			print("RK")
 			delay(1)
 			while len(contours_rescuekit) > 0:
 				rcapture = PiRGBArray(camera)
@@ -611,35 +627,36 @@ while True:
 			if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
 				print("detected silver")
 				cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-				ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
-				read_serial = ser.readline().decode('ascii') 
-				if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
-					cv2.destroyAllWindows()
-					camera.close()
-					rescue()
-					break
-				else:
-					print("Teensy said: there can't be the evacuation zone")
-					ser.write(str(0/10).encode())
-					rescueCounter = 0
+				#ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
+				checkRescue()
+				# read_serial = ser.readline().decode('ascii') 
+				# if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
+				# 	cv2.destroyAllWindows()
+				# 	camera.close()
+				# 	rescue()
+				# 	break
+				# else:
+				# 	print("Teensy said: there can't be the evacuation zone")
+				# 	ser.write(str(0/10).encode())
+				# 	rescueCounter = 0
 		
 		if(len(contours_blk) > 0):
 			if(len(contours_blk) > 4):
 				if(len(contours_silver) == 0):
 					print("detected silver")
 					cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-					ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
-					
-					read_serial = ser.readline().decode('ascii') 
-					if "8" in read_serial: #yep, the distance is between 80cm and 130cm 
-						cv2.destroyAllWindows()
-						camera.close()
-						rescue()
-						break
-					else:
-						print("Teensy said: there can't be the evacuation zone")
-						ser.write(str(0/10).encode())
-						rescueCounter = 0
+					# ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
+					checkRescue()
+					# read_serial = ser.readline().decode('ascii') 
+					# if "8" in read_serial: #yep, the distance is between 80cm and 130cm 
+					# 	cv2.destroyAllWindows()
+					# 	camera.close()
+					# 	rescue()
+					# 	break
+					# else:
+					# 	print("Teensy said: there can't be the evacuation zone")
+					# 	ser.write(str(0/10).encode())
+					# 	rescueCounter = 0
 
 			nearest = 1000
 			a1 = 0

@@ -69,6 +69,7 @@ void setup() {
 		Serial.print("Ooops, no BNO055 detected ... Check your wiring or I2C ADDR!");
 		//while (1);
 		beep(1000);
+		led(0, 0, 1);
 	}
 
 	//distance sensor
@@ -133,7 +134,11 @@ void loop() {
 
 	if (readString != "") {
 		Serial.println(readString);
-		if (readString == "R") {
+		if(readString == "dist") {
+			int di = distanceAvg();
+			Serial2.println(String(di));
+
+		} if (readString == "R") {
 			led(0, 0, 0);
 			drive(255, 255, 800);
 			turnGreen(false);
@@ -169,6 +174,7 @@ void loop() {
 		} if (readString.indexOf("RK") != -1) {
 			drive(0, 0, 0);
 			beep(1000);
+			led(1, 1, 1);
 			String incomingString = "";
 			while (true) {
 				if (Serial2.available() > 0) {
@@ -264,16 +270,18 @@ void loop() {
 		}if (readString == "Rescue") { //Raspi says: there is the rescue area because he did not see a line for 10 frames
 			drive(0, 0, 0);
 			led(1, 0, 1);
-			if (rescueFlag == false && distanceAvg() < 2000 && distanceAvg() > 500) { //checks if distance fits
-				drive(0, 0, 0);
-				led(1, 0, 0);
-				Serial2.println("8"); //sends a 8 to the raspi to verify the entrance of the evacuation zone
-				rescue();
-			} else {
-				drive(0, 0, 0);
-				led(0, 0, 1);
-				Serial2.println(6); //sends a 6 because there can't be the rescue area
-			}
+			Serial2.println("1");
+			rescue();
+			// if (rescueFlag == false && distanceAvg() < 2000 && distanceAvg() > 500) { //checks if distance fits
+			// 	drive(0, 0, 0);
+			// 	led(1, 0, 0);
+			// 	Serial2.println("8"); //sends a 8 to the raspi to verify the entrance of the evacuation zone
+			// 	rescue();
+			// } else {
+			// 	drive(0, 0, 0);
+			// 	led(0, 0, 1);
+			// 	Serial2.println("6"); //sends a 6 because there can't be the rescue area
+			// }
 		} else {
 			String newReadString = "";
 			for(int i = 0; i < readString.length(); i++) {
@@ -493,6 +501,10 @@ void drop() {
 
 	servoArm.attach(23);
 	servoArm.write(140); //arm done
+	delay(900);
+	servoArm.write(60);
+	delay(900);
+	servoArm.write(140);
 	delay(900);
 	servoArm.write(10);
 	delay(900);
@@ -790,7 +802,7 @@ void rescue() {
 				drive(200, 200, 100);
 				drive(0, 0, 0);
 				turnRelative(180);
-				drive(-200, -200, 100);
+				//drive(-200, -200, 100);
 				drive(0, 0, 0);
 				Serial2.println(1);
 			} else if (incomingString == "armUp") {
