@@ -124,15 +124,15 @@ void loop() {
 			Serial2.println(String(di));
 		} if (readString == "R") {
 			led(0, 0, 0);
-			drive(255, 255, 700);
+			drive(255, 255, 600);
 			turnRelative(85);
-			drive(-255, -255, 250);
+			drive(-255, -255, 200);
 			led(0, 0, 0);
 		} if (readString == "L") {
 			led(0, 0, 0);
-			drive(255, 255, 700);
+			drive(255, 255, 600);
 			turnRelative(-85);
-			drive(-255, -255, 250);
+			drive(-255, -255, 200);
 			led(0, 0, 0); 
 		} if (readString == "A") {
 			drive(0, 0, 0);
@@ -170,6 +170,7 @@ void loop() {
 					pln(incomingString);
 
 					if(incomingString == "grabRescueKit") {
+						drive(-255, -255, 40);
 						turnRelative(180);
 						drive(-200, -200, 50);
 						drive(0, 0, 0);
@@ -180,6 +181,7 @@ void loop() {
 						turnRelative(180);
 						drive(-200, -200, 100);
 						drive(0, 0, 0);
+						Serial2.println(1);
 						break;
 					} else if (incomingString == "armUp") {
 						drive(0, 0, 0);
@@ -231,7 +233,7 @@ void loop() {
 			drive(-255, -255, 500);
 			drive(255, 255, 1);
 		} if (readString.indexOf("STOP") != -1) {
-			drive(255, 255, 300);
+			drive(255, 255, 400);
 			drive(0, 0, 100000);
 		} else if (readString.indexOf("S") != -1) {
 			drive(255, 255, 50);

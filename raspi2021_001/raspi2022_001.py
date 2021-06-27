@@ -26,11 +26,11 @@ import random
 import math
 import os
 
-CUT = (0, 320, 130, 192)
+CUT = (0, 320, 140, 192)
 CUT_GRN = (0, 320, 150, 192)
 CUT_SILVER = (60, 280, 0, 120)
-CUT_RESCUEKIT = (50, 270, 120, 170)
-CUT_TOP = (120, 200, 60, 120) #extra cut for skip at intersections
+CUT_RESCUEKIT = (50, 270, 100, 170)
+CUT_TOP = (110, 210, 80, 130) #extra cut for skip at intersections
 CUT_OBSTACLE = (60, 300, 140, 192)
 
 cut_grn_offset = 0
@@ -207,7 +207,7 @@ def checkForCorner():
 
 	black = cv2.inRange(image, (0, 0, 0), (75, 75, 75))
 
-	return cv2.countNonZero(black) > 10000
+	return cv2.countNonZero(black) > 5000
 
 def checkForExit():
 	print("CHECKING FOR EXIT")
@@ -352,7 +352,7 @@ def rescue():
 		drive(255, 255, 300)
 		drive(-255, -255, 130)
 		turnRelative(-90)
-		drive(-255, -255, 300)
+		drive(-255, -255, 400)
 		drive(255, 255, 130)
 		angle = angle + 90
 		if(angle < 0):
@@ -382,6 +382,8 @@ def rescue():
 		turnRelative(-90 * sign)
 
 		ds = -1
+		if(angle == 90 or angle == 270):
+			ds = 1
 		sendAndWait("setOrigin")
 		for i in range(9):
 			drive(255, 255, D_ONE_TILE)
@@ -436,34 +438,36 @@ def rescue():
 						turnRelative(-90 * ds)
 					drive(-255, -255, D_ONE_TILE)
 				# Now we're back at the tile where we started searching from
-				turnRelative(-90)
+				turnRelative(90 * ds)
 				drive(-200, -200, 500)
 				drive(200, 200, 150)
-				turnRelative(-45)
+				turnRelative(45 * ds)
 				drive(255, 255, 650)
-				turnRelative(90)
+				turnRelative(-90 * ds)
 				drive(-255, -255, 400)
 
 				sendAndWait("drop")
 
 				drive(200, 200, 150)
-				turnRelative(90)
+				turnRelative(-90 * ds)
 				drive(255, 255, 550)
-				turnRelative(-45)
+				turnRelative(45 * ds)
 				drive(200, 200, 100)
-				turnRelative(-90)
+				turnRelative(90 *ds)
 				drive(-200, -200, 500)
 				drive(200, 200, 130)
-				turnRelative(90)
+				turnRelative(-90 * ds)
 				sendAndWait("setOrigin")
 				break	
 	print("Searching for exit...")
 	for i in range(8):
 		turnRelative(90 * sign)
+		drive(-200, -200, 150)
 		if(checkForExit()):
 			print("FOUND EXIT")
 			drive(255, 255, 500)
 			return
+		drive(200, 200, 150)
 		turnRelative(-90 * sign)
 		sendAndWait("turnToOrigin")
 
@@ -473,9 +477,9 @@ def rescue():
 
 		if(i == 1 or i == 3 or i == 6):
 			turnRelative(-90 * sign)
-			drive(-200, -200, 450)
+			drive(-200, -200, 250)
 			sendAndWait("setOrigin")
-			drive(200, 200, 100)
+			drive(200, 200, 130)
 
 
 def checkRescue():
@@ -497,7 +501,7 @@ while True:
 	camera = PiCamera()
 	camera.resolution = (320, 192)
 	camera.rotation = 0
-	camera.framerate = 32
+	camera.framerate = 50
 	rawCapture = PiRGBArray(camera, size=(320, 192))
 
 	turningGreen = 0
@@ -507,12 +511,12 @@ while True:
 		#	s2 = ser.readline()
 		#	print("TEENSY_DEBUG: " + str(s2))
 
-		if(ser.in_waiting != 0):
-		 	s = str(ser.readline())
-		 	print("TEENSY SAID: " + s)
-		 	if("O" in s):
-		 		obstacle = True
-		 		print("OBSTACLE")
+		# if(ser.in_waiting != 0):
+		#  	s = str(ser.readline())
+		#  	print("TEENSY SAID: " + s)
+		#  	if("O" in s):
+		#  		obstacle = True
+		#  		print("OBSTACLE")
 
 		image = frame.array
 		image_rgb = image 
@@ -520,7 +524,7 @@ while True:
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 
-		if abs(LinePosLastLoop[0]) > 30 and LineWidthLastLoop > 100:
+		if abs(LinePosLastLoop[0]) > 30 and LineWidthLastLoop > 80:
 			print("Intersection check")
 			cut_top = image[CUT_TOP[2]:CUT_TOP[3],CUT_TOP[0]:CUT_TOP[1]]            
 			cv2.imshow("cut_top", cut_top)
@@ -528,7 +532,7 @@ while True:
 
 			line_top = cv2.inRange(cut_top, (0, 0, 0), (255, 255, 75))
 
-			if(cv2.countNonZero(line_top) > 1000):
+			if(cv2.countNonZero(line_top) > 500):
 				ser.write(b'S')
 				delay(0.6)
 				grn_list.clear()
@@ -566,9 +570,9 @@ while True:
 
 
 		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 65))
-		green = cv2.inRange(cut_grn, (51, 60, 38), (75, 255, 255))
+		green = cv2.inRange(cut_grn, (45, 60, 30), (80, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-		rescuekit = cv2.inRange(cut_rescuekit, (110, 200, 25), (125, 255, 150))
+		rescuekit = cv2.inRange(cut_rescuekit, (110, 100, 23), (128, 255, 255))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
 
 		kernel = np.ones((4, 4), np.uint8)
@@ -742,9 +746,10 @@ while True:
 			
 		contours_right = False
 		contours_left = False   
-		if(len(contours_grn) > 0 and len(contours_grn) < 3 or grn_counter <= 2):
+		if(len(contours_grn) > 0 and len(contours_grn) < 3):
+			#if(grn_counter <= 3):
 			cut_grn_offset = -30
-			delay(0.03)
+			delay(0.01)
 			if(grn_counter <= 0):
 				grn_counter = 3
 			else:
