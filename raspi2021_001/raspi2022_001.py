@@ -3,9 +3,9 @@
 
 # To do:
 # 
-# Ecke und Ausgang RICHTIG finden und nicht premappen xD
-# Nach dem Finden des Rescuekits richtig ausrichten und dann erst aufnehmen
-# raspi kühler (aktiv)
+# Kreuzungen (SKIP verbessern)
+# Nach aufgenommender Kugel Ecke finden
+# Ausgang finden
 # autostart von Linefollowerprogramm
 # prüfen, ob auch wirklich eine Kugel aufgenommen wurde
 # schnellere baudrate
@@ -23,6 +23,7 @@ import time
 import cv2
 import serial
 import random
+import math
 import os
 
 CUT = (0, 320, 140, 192)
@@ -105,7 +106,10 @@ def delay(duration):
 	timeWaitet = timeWaitet + duration
 
 def drive(motorLeft, motorRight, duration):
-	send = str(motorLeft) + ':' + str(motorRight) + ':' + str(duration)
+	if int(duration) == 0:
+		print("SPEED IS 0, CHANGED TO 1 INSTEAD")
+		duration = 1
+	send = str(int(motorLeft)) + ':' + str(int(motorRight)) + ':' + str(int(duration))
 	print("Send:", send)
 	ser.write(send.encode())
 	duration = float(duration / 1000.0)
@@ -175,67 +179,7 @@ def findCorner(pIsWallRight):
 		print("searching for corner with wall left")
 
 def findExit(pIsWallRight): #find green strip in the evacuation zone
-	"""
-	time.sleep(0.5)
-	print("1")
-	camera = PiCamera()
-	camera.resolution = (320, 180)
-	camera.rotation = 0
-	camera.framerate = 32
-	rawCapture = PiRGBArray(camera, size=(320, 180))
-	print("2")
-	"""
-	# Ausgang
-	drive(-255, -255, 500)
-	turnRelative(-90)
-	drive(200, 200, 200)
-"""
-	if pIsWallRight == True:
-		print("searching for exit with wall right")
-		for i in range(3):
-			drive(255, 255, 200)
-		#camera.close()
-		sendAndWait("exit")
-		return
-	else:
-		print("searching for exit with wall left")
-		return
-"""
-"""
-		for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-			print("3")			
-			image = frame.array
-			image = image[50:270][50:192]           
-			image_rgb = image
-
-			image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) #convert brg to hsv
-			image = cv2.GaussianBlur(image, ((15, 15)), 2, 2)
-
-
-			green = cv2.inRange(image, (30, 20, 20), (100, 255, 255))
-
-			contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-			
-			print(len(contours_grn))
-			if(len(contours_grn) > 0):
-				cv2.imshow("Exit", image_rgb)
-				cv2.putText(image_rgb, "Exit", (110, 60), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 106, 255), 3)
-				drive(130, 130, 900)
-				drive(150, 0, 300)
-				camera.close()
-				cv2.destroyAllWindows()
-				sendAndWait("exit")
-				print("received exit")
-				return
-			else:
-				drive(255, 255, 50)
-			cv2.drawContours(image_rgb, contours_grn, -1, (0, 106, 255), 3)
-			cv2.imshow("Exit", image_rgb)
-			rawCapture.truncate(0)
-			key = cv2.waitKey(1) & 0xFF
-			if key == ord("q"):
-				break
-		"""
+	return
 
 def capture():
 	camera = PiCamera()
@@ -428,8 +372,6 @@ def rescue():
 		if(angle == 180 or angle == 270):
 			ds = -1
 		for i in range(9):
-			x = x + dirx
-			y = y + diry
 			drive(255, 255, D_ONE_TILE)
 
 			if(i == 1 or i == 2):
@@ -453,10 +395,12 @@ def rescue():
 			if(res[0] == 2):
 				print("CAPTURED")
 				# Move back according to the recorded movement
-				"""     SVENS CODE:
 				totalMovement = math.sqrt(totalMovementY * totalMovementY + totalMovementX * totalMovementX)
 				alpha = math.atan2(totalMovementY, totalMovementX)
-
+				alpha = ((alpha * 360) / (2*3.1415926535)) #convert to dregrees
+				print("ALPHA:", alpha)
+				print("TOTAL MOVEMENT", totalMovement)
+				print("CURRENT ANGLE", currAngle)
 				turnRelative(currAngle - alpha)
 				drive(-200, -200, totalMovement / 200)
 				turnRelative(alpha) # turn back
@@ -480,9 +424,7 @@ def rescue():
 				drive(-255, -255, 400)
 
 				sendAndWait("drop")
-				"""
-				########### MY CODE ###########
-				sendAndWait("turnToOrigin")
+				
 	# Start searching for exit
 	drive(255, 255, 200)
 	turnRelative(90 * sign)
@@ -505,143 +447,7 @@ def rescue():
 
 		if(i == 1 or i == 3 or i == 6):
 			turnRelative(-90 * sign)
-	##################
-	# noVictim = 0 #counter for frames without victim, if x frames without one -> turn a bit around
-	# turnCnt = 0 #how many degrees has the robot turned
-	# vicitmsSaved = 0 #how many victims have been saved?
-	# fullRotationCounter = 0 
 
-	# camera = PiCamera()
-	# camera.resolution = (320, 180) 
-	# camera.rotation = 0
-	# camera.framerate = 32
-	# rawCapture = PiRGBArray(camera, size=(320, 180))
-	# print("Rescue program started")
-	# time.sleep(1)
-	# framesTotalRescue = 0 
-	# startTimeRescue = time.time()
-
-	# isWallRight = True #were is the wall in the evacuation zone?
-	# uselessCnt = 0
-	# drive(255, 220, 2000)
-	# turnRelative(80)
-	# drive(-255, -255, 500)
-	# sendAndWait("setOrigin") #save absolute position to come back to it afterwards
-	# drive(255, 255, 1500)
-	# """
-	# turnRelative(45)
-	# drive(255, 255, 300)
-	# turnRelative(90)
-	# drive(-255, -255, 500)  
-	# armDown()
-	# armUp()
-	# drive(255, 255, 1300)
-	# sendAndWait("turnToOrigin")
-	# drive(255, 255, 500)
-	# """
-	
-	# for frame in camera.capture_continuous(rawCapture, format="bgr", use_video_port=True):
-	# 	image = frame.array
-	# 	image = cv2.GaussianBlur(image, ((5, 5)), 2, 2)
-		
-	# 	gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-	# 	circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, dp = 1, minDist = 60, param1 = 34, param2 = 24, minRadius = 2, maxRadius = 300)
-
-	# 	# ensure at least some circles were found
-	# 	if circles is not None:
-	# 		if noVictim > 5: #victim in the current frame -> lower noVictim counter
-	# 			noVictim = noVictim - 5
-	# 		else:
-	# 			noVictim = 0
-	# 		# convert the (x, y) coordinates and radius of the circles to integers
-	# 		circles = np.round(circles[0, :]).astype("int")
-	# 		# loop over the (x, y) coordinates and radius of the circles
-	# 		for (x, y, r) in circles:
-	# 			#print(y) #y pos of victim
-	# 			# draw the circle in the output image, then draw a rectangle
-	# 			cv2.circle(image, (x, y), r, (255, 255, 0), 4)
-	# 			#victimColor = image[y, x, 0] + image[y, x, 1] + image[y, x, 2]
-	# 			#print("Color of victim centre:", victimColor)
-	# 			cv2.rectangle(image, (x - 5, y - 5), (x + 5, y + 5), (0, 0, 255), -1)
-	# 			ballPosition = x - 160
-	# 			if ballPosition > -7 and ballPosition < 7: #Victim is horizontal aligned
-	# 				print(y)
-	# 				if y > 120 and y < 140: #turn around and grap ball
-	# 					drive(-150, -150, 30)
-	# 					turnRelative(180)
-	# 					armDown()
-	# 					armUp()
-	# 					#turn to orogin and search for the black corner
-	# 					sendAndWait("turnToOrigin")
-	# 					"""findCorner(isWallRight)	
-	# 					drive(255, 255, 1500) #don't search at the same place as before				
-	# 					sendAndWait("turnToOrigin")
-	# 					turnRelative(90)
-	# 					drive(255, 255, 2000)
-	# 					drive(-255, -255, 80)
-	# 					turnRelative(-70)
-	# 					drive(255, 255, 200)
-	# 					turnRelative(-15)
-	# 					camera.close()
-	# 					cv2.destroyAllWindows()
-	# 					findExit(isWallRight)"""
-	# 					findCorner(isWallRight)
-	# 					findExit()
-	# 					return
-	# 				elif y > 170:
-	# 					drive(-255, -255, 80)
-	# 				elif y > 115:
-	# 					drive(-255, -255, 10)
-	# 				elif y < 90:
-	# 					drive(255, 255, 40)
-	# 				elif y < 140:
-	# 					drive(255, 255, 10)
-	# 			elif ballPosition <= -7 and ballPosition >= -25:
-	# 				drive(-150, 150, 30)
-	# 			elif ballPosition <= -25:
-	# 				drive(-255, 255, 80)
-	# 			#drive(-150, 150, ballPosition * -0.5)
-
-	# 			elif ballPosition >= 7 and ballPosition <= 25:
-	# 				drive(150, -150, 30)
-	# 			elif ballPosition >= 25:
-	# 				drive(255, -255, 80)
-	# 			cv2.putText(image, str(ballPosition), (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 3)
-	# 	else:
-	# 		noVictim = noVictim + 1 #one frame without victim -> increase counter
-	# 		if noVictim >= 10: #No victim for 10 frames -> turn a bit
-	# 			if turnCnt < 360:
-	# 				if fullRotationCounter == 0:
-	# 					turnRelative(45)
-	# 					turnCnt = turnCnt + 45
-	# 				elif fullRotationCounter == 1:
-	# 					drive(255, 255, 500)
-	# 					turnRelative(70)
-	# 					turnCnt = turnCnt + 70
-	# 				else:
-	# 					uselessCnt = uselessCnt + 1
-	# 					if uselessCnt == 1:
-	# 						turnRelative(180)
-	# 					drive(255, 255, 500)
-	# 					turnRelative(-70)
-	# 					turnCnt = turnCnt + 70
-	# 			else:
-	# 				print("turned full 360 degs")
-	# 				#sendAndWait("dreheZuUrsprung")
-	# 				fullRotationCounter = fullRotationCounter + 1
-	# 				turnCnt = 0
-
-	# 	cv2.imshow("Kugel output", image)
-	# 	rawCapture.truncate(0)
-	# 	key = cv2.waitKey(1) & 0xFF
-	# 	framesTotalRescue = framesTotalRescue + 1
-	# 	if key == ord("q"):
-	# 		print("Avg. FPS:", int(framesTotalRescue / (time.time() - startTimeRescue))) #sendet durchsch. Bilder pro Sekunde (FPS)
-	# 		camera.close()
-	# 		break
-
-	# print("Rescue Program stopped")
 
 ##############################################################################################
 while True:
@@ -682,8 +488,8 @@ while True:
 
 			contours_top, hierarchy_top = cv2.findContours(line_top.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 			if(len(contours_top) > 0):
-				ser.write(b'S')
-				print("SKIP")
+				#ser.write(b'S')
+				#print("SKIP")
 				delay(0.4)		
 		cut = image[CUT[2]:CUT[3],CUT[0]:CUT[1]]
 		cut_grn = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]] 
@@ -800,7 +606,7 @@ while True:
 			if rescueCounter > 2: #lower rescueCnt since there is a black contour
 				rescueCounter = rescueCounter - 3
 		
-		if len(contours_silver) == 0: #potential silber
+		elif len(contours_silver) == 0: #potential silber
 			rescueCounter = rescueCounter + 1
 			if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
 				print("detected silver")
@@ -875,11 +681,11 @@ while True:
 			x, y, w, h = b
 			#print(w)
 			LineWidthLastLoop = w
-			if(w > 210): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
-				pass
-				#cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-				#ser.write(b'\nS\n')
-				#print("Send: Skipped")
+			if(w > 310): #black contours is nearly as big as the whole width of the image -> there must be an intersection 
+				cv2.putText(image_rgb, "intersection", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+				ser.write(b'\nS\n')
+				delay(0.045)
+				print("Send: Skipped")
 
 			linePos = int(x + w / 2 - 160)
 			cv2.putText(image_rgb, str(linePos),(linePos + 140, 70), cv2.FONT_HERSHEY_DUPLEX, 2, (0, 106, 255), 2)

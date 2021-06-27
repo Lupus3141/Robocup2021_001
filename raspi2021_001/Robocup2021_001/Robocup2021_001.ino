@@ -34,8 +34,8 @@ int voltageDivider = A2;
 
 int xy = 0;
 boolean rescueFlag = false;
-int MOTORSPEED = 70;
-int SENSITIVITY = 60;
+int MOTORSPEED = 80;
+int SENSITIVITY = 35;
 
 int obstacleCnt = 0;
 float origin; //save absolute orientation in which the robot is aligned with the walls in the rescue area
@@ -248,7 +248,7 @@ void loop() {
 			servoString.write(180); //loose rope
 			drive(0, 0, 100000);
 		} else if (readString.indexOf("S") != -1) {
-			drive(255, 255, 400);
+			drive(255, 255, 50);
 		} if (readString == "gapR") {
 			drive(0, 0, 0);
 			beep(50);
