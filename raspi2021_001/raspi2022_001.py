@@ -26,12 +26,14 @@ import random
 import math
 import os
 
-CUT = (0, 320, 140, 192)
-CUT_GRN = (50, 270, 110, 192)
+CUT = (0, 320, 130, 192)
+CUT_GRN = (0, 320, 150, 192)
 CUT_SILVER = (60, 280, 0, 120)
 CUT_RESCUEKIT = (50, 270, 120, 170)
 CUT_TOP = (120, 200, 60, 120) #extra cut for skip at intersections
 CUT_OBSTACLE = (60, 300, 140, 192)
+
+cut_grn_offset = 0
 
 ser = serial.Serial('/dev/ttyAMA0', 9600, timeout = 0.5) #establish serial connenction 
 
@@ -137,10 +139,15 @@ def sendAndWait(send): #sends command and waits for receiving the ok
 
 def distance():
 	ser.write(b"dist")
-	while True:
+	t = time.time()
+	while time.time() - t < 0.5:
 		readData = ser.readline().decode('ascii').rstrip()
 		if readData != "":
-			return int(readData) * 0.075
+			try:
+				return int(readData) * 0.075
+			except:
+				return 2000
+	return 2000
 
 def toCornerUnload():
 	camera = PiCamera()
@@ -449,19 +456,7 @@ def rescue():
 				drive(200, 200, 130)
 				turnRelative(90)
 				sendAndWait("setOrigin")
-				break
-	print("DONE WITH FOR, NICE")		
-	# Start searching for exit
-	# drive(255, 255, 200)
-	# turnRelative(90 * sign)
-	# drive(255, 255, 350)
-	# turnRelative(-45 * sign)
-	# drive(255, 255, 150)
-	# # Ausrichten
-	# turnRelative(-90 * sign)
-	# drive(-255, -255, 300)
-	# drive(255, 255, 150)
-	# turnRelative(90 * sign)
+				break	
 	print("Searching for exit...")
 	for i in range(8):
 		turnRelative(90 * sign)
@@ -512,12 +507,12 @@ while True:
 		#	s2 = ser.readline()
 		#	print("TEENSY_DEBUG: " + str(s2))
 
-		# if(ser.in_waiting != 0):
-		# 	s = str(ser.readline())
-		# 	print("TEENSY SAID: " + s)
-		# 	if("O" in s):
-		# 		obstacle = True
-		# 		print("OBSTACLE")
+		if(ser.in_waiting != 0):
+		 	s = str(ser.readline())
+		 	print("TEENSY SAID: " + s)
+		 	if("O" in s):
+		 		obstacle = True
+		 		print("OBSTACLE")
 
 		image = frame.array
 		image_rgb = image 
@@ -525,61 +520,60 @@ while True:
 		image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV) # Konvertiert das Bild zum Christentum
 		image = cv2.GaussianBlur(image, ((9, 9)), 2, 2)
 
-		
-		A = 30
-		if (LinePosLastLoop[0] < -A or LinePosLastLoop[0] > A) and LineWidthLastLoop > 160:
+		if abs(LinePosLastLoop[0]) > 30 and LineWidthLastLoop > 100:
+			print("Intersection check")
 			cut_top = image[CUT_TOP[2]:CUT_TOP[3],CUT_TOP[0]:CUT_TOP[1]]            
 			cv2.imshow("cut_top", cut_top)
 			#cv2.GaussianBlur(cut_top, ((9, 9)), 2, 2)
 
 			line_top = cv2.inRange(cut_top, (0, 0, 0), (255, 255, 75))
 
-			contours_top, hierarchy_top = cv2.findContours(line_top.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-			if(len(contours_top) > 0):
-				#ser.write(b'S')
-				#print("SKIP")
-				delay(0.4)		
+			if(cv2.countNonZero(line_top) > 1000):
+				ser.write(b'S')
+				delay(0.6)
+				grn_list.clear()
+
 		cut = image[CUT[2]:CUT[3],CUT[0]:CUT[1]]
-		cut_grn = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]] 
+		cut_grn = image[(CUT_GRN[2] + cut_grn_offset):CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]] 
 		cut_silver = image[CUT_SILVER[2]:CUT_SILVER[3],CUT_SILVER[0]:CUT_SILVER[1]]
-		cut_rescuekit = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
+		cut_rescuekit = image[CUT_RESCUEKIT[2]:CUT_RESCUEKIT[3],CUT_RESCUEKIT[0]:CUT_RESCUEKIT[1]]
 		cut_stop = image[CUT_GRN[2]:CUT_GRN[3],CUT_GRN[0]:CUT_GRN[1]]
 
-		if(turningGreen != 0):
-			off = 0
-			if(turningGreen == 1):
-				off = -60
-			else:
-				off = 60
+		# if(turningGreen != 0):
+		# 	off = 0
+		# 	if(turningGreen == 1):
+		# 		off = -60
+		# 	else:
+		# 		off = 60
 
-			cut_green_stop = image[120:192,(130 + off):(190 + off)]
+		# 	cut_green_stop = image[120:192,(130 + off):(190 + off)]
 
-			green_stop = cv2.inRange(cut_green_stop, (0, 0, 0), (255, 255, 75))
-			#contours_green_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+		# 	green_stop = cv2.inRange(cut_green_stop, (0, 0, 0), (255, 255, 75))
+		# 	#contours_green_stop, hierarchy_stop = cv2.findContours(stop.copy(),cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
 
-			cv2.rectangle(image_rgb, (130 + off, 120), (190 + off, 192), (0, 255, 0), 2)
+		# 	cv2.rectangle(image_rgb, (130 + off, 120), (190 + off, 192), (0, 255, 0), 2)
 
-			print(cv2.countNonZero(green_stop))
-			if cv2.countNonZero(green_stop) > 300:	
-				print("Finished turning Green")
-				turningGreen = 0
-				ser.write(b'\nG\n')
-				delay(0.2)
-				#ser.write(b'G')
-				#delay(0.2)
-				cv2.putText(image_rgb, "Green end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+		# 	print(cv2.countNonZero(green_stop))
+		# 	if cv2.countNonZero(green_stop) > 300:	
+		# 		print("Finished turning Green")
+		# 		turningGreen = 0
+		# 		ser.write(b'\nG\n')
+		# 		delay(0.2)
+		# 		#ser.write(b'G')
+		# 		#delay(0.2)
+		# 		cv2.putText(image_rgb, "Green end", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
 
 
 
-		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 75))
-		green = cv2.inRange(cut_grn, (52, 60, 48), (75, 255, 255))
+		line = cv2.inRange(cut, (0, 0, 0), (255, 255, 65))
+		green = cv2.inRange(cut_grn, (51, 60, 38), (75, 255, 255))
 		silber = cv2.inRange(cut_silver, (0, 0, 0), (255, 255, 75))
-		rescuekit = cv2.inRange(cut_rescuekit, (119, 200, 25), (125, 255, 150))
+		rescuekit = cv2.inRange(cut_rescuekit, (110, 200, 25), (125, 255, 150))
 		stop = cv2.inRange(cut_rescuekit, (165, 150, 100), (175, 255, 200))
 
 		kernel = np.ones((4, 4), np.uint8)
-		green = cv2.erode(green, kernel, iterations=3)
-		green = cv2.dilate(green, kernel, iterations=5)
+		green = cv2.erode(green, kernel, iterations=2)
+		green = cv2.dilate(green, kernel, iterations=4)
 
 		contours_blk, hierarchy_blk = cv2.findContours(line.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 		contours_grn, hierarchy_grn = cv2.findContours(green.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -591,7 +585,6 @@ while True:
 		index = 0
 		
 		if len(contours_rescuekit) > 0 and cv2.countNonZero(rescuekit) > 1000:
-
 			ser.write(b'RK') #send rescue kit
 			print("RK")
 			delay(1)
@@ -632,11 +625,6 @@ while True:
 					ser.write(b'grabRescueKit')
 					delay(6)
 					break
-					# drive(-200, -200, 50)
-					# turnRelative(180)
-					# drive(-200, -200, 85)
-					# armDown()
-					# armUp()
 
 		if len(contours_stop) > 0:
 			b = cv2.boundingRect(contours_stop[0])
@@ -652,23 +640,23 @@ while True:
 			if rescueCounter > 2: #lower rescueCnt since there is a black contour
 				rescueCounter = rescueCounter - 3
 		
-		elif len(contours_silver) == 0: #potential silber
-			rescueCounter = rescueCounter + 1
-			if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
-				print("detected silver")
-				cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
-				#ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
-				checkRescue()
-				# read_serial = ser.readline().decode('ascii') 
-				# if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
-				# 	cv2.destroyAllWindows()
-				# 	camera.close()
-				# 	rescue()
-				# 	break
-				# else:
-				# 	print("Teensy said: there can't be the evacuation zone")
-				# 	ser.write(str(0/10).encode())
-				# 	rescueCounter = 0
+		# elif len(contours_silver) == 0: #potential silber
+		# 	rescueCounter = rescueCounter + 1
+		# 	if rescueCounter > 10: #no black contours for 10 frames -> there must be the evacuation zone
+		# 		print("detected silver")
+		# 		cv2.putText(image_rgb, "rescue", (65, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 106, 255), 3)
+		# 		#ser.write(b'Rescue') #sends "Rescue" to the teensy to prove the rescue area with the distance sensor
+		# 		checkRescue()
+		# 		# read_serial = ser.readline().decode('ascii') 
+		# 		# if read_serial == '8\r\n': #yep, the distance is between 80cm and 130cm 
+		# 		# 	cv2.destroyAllWindows()
+		# 		# 	camera.close()
+		# 		# 	rescue()
+		# 		# 	break
+		# 		# else:
+		# 		# 	print("Teensy said: there can't be the evacuation zone")
+		# 		# 	ser.write(str(0/10).encode())
+		# 		# 	rescueCounter = 0
 		
 		if(len(contours_blk) > 0):
 			if(len(contours_blk) > 4):
@@ -754,9 +742,11 @@ while True:
 			
 		contours_right = False
 		contours_left = False   
-		if(len(contours_grn) > 0 and len(contours_grn) < 3):
+		if(len(contours_grn) > 0 and len(contours_grn) < 3 or grn_counter <= 2):
+			cut_grn_offset = -30
+			delay(0.03)
 			if(grn_counter <= 0):
-				grn_counter = 2
+				grn_counter = 3
 			else:
 				if(grn_counter == 1):
 					left = 0
@@ -821,6 +811,7 @@ while True:
 						contours_right = True
 
 		else:
+			cut_grn_offset = 0
 			if(grn_counter > 0):
 				print("abort")
 				grn_counter = 0

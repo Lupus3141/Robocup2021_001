@@ -124,19 +124,16 @@ void loop() {
 			Serial2.println(String(di));
 		} if (readString == "R") {
 			led(0, 0, 0);
-			drive(255, 255, 800);
-			turnGreen(false);
+			drive(255, 255, 700);
+			turnRelative(85);
 			drive(-255, -255, 250);
-			drive(255, 255, 1);
 			led(0, 0, 0);
 		} if (readString == "L") {
-			led(1, 0, 0);
-			drive(255, 255, 800);
-			//turnRelative(-75);
-			turnGreen(true);
+			led(0, 0, 0);
+			drive(255, 255, 700);
+			turnRelative(-85);
 			drive(-255, -255, 250);
-			drive(255, 255, 1);
-			led(0, 0, 0);   
+			led(0, 0, 0); 
 		} if (readString == "A") {
 			drive(0, 0, 0);
 			drive(0, 0, 0);
@@ -234,8 +231,7 @@ void loop() {
 			drive(-255, -255, 500);
 			drive(255, 255, 1);
 		} if (readString.indexOf("STOP") != -1) {
-			drive(255, 255, 200);
-			servoString.write(180); //loose rope
+			drive(255, 255, 300);
 			drive(0, 0, 100000);
 		} else if (readString.indexOf("S") != -1) {
 			drive(255, 255, 50);
@@ -474,6 +470,7 @@ void drop() { //drops rescue kit into black corner
 	servoArm.attach(23);
 	servoArm.write(140);
 	delay(900);
+	drive(0, 0, 0);
 	servoArm.write(60);
 	delay(900);
 	servoArm.write(140);
